@@ -208,3 +208,46 @@ def test_predict_camera_image_fallback(client):
     data = {"camera_image": (_make_image(), "phone_photo.jpg")}
     resp = client.post("/predict", data=data, content_type="multipart/form-data")
     assert resp.status_code in (200, 302)
+
+
+# ── Clinical treatment protocol tests ───────────────────────────────────
+
+def test_clinical_protocols_coverage():
+    """All 6 target diseases must have full clinical protocols."""
+    import clinical_protocols
+    classes = [
+        "Atopic Dermatitis",
+        "Contact Dermatitis",
+        "Eczema",
+        "Scabies",
+        "Seborrheic Dermatitis",
+        "Tinea Corporis"
+    ]
+    for c in classes:
+        proto = clinical_protocols.get_protocol(c)
+        assert proto is not None, f"Missing protocol for {c}"
+        assert len(proto["rx_first_line"]) > 0
+        assert len(proto["non_pharma_measures"]) > 0
+        assert len(proto["contraindications"]) > 0
+        assert len(proto["urgent_referral"]) > 0
+
+
+def test_view_result_with_protocol(client):
+    """GET /result/<id> should render assessment report and Rx guidance."""
+    import db as db_module
+    # Create test image in upload folder
+    test_img = os.path.join(config.UPLOAD_FOLDER, "test_scabies.jpg")
+    img = Image.new("RGB", (224, 224), color="red")
+    img.save(test_img, "JPEG")
+
+    db_module.save_prediction("test_scabies.jpg", "Scabies", 0.88, json.dumps([{"class": "Scabies", "confidence": 0.88}]))
+    records = db_module.get_history()
+    case_id = records[0]["id"]
+
+    resp = client.get(f"/result/{case_id}")
+    assert resp.status_code == 200
+    assert b"Diagnostic Assessment Report" in resp.data
+    assert b"Treatment Protocol &amp; Prescription Guidance: Scabies Infestation" in resp.data
+    assert b"Permethrin 5% Dermal Cream" in resp.data
+    assert b"Simultaneous Household Treatment" in resp.data
+

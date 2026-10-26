@@ -41,6 +41,7 @@
                         <th>Predicted Pathology</th>
                         <th>Classification Confidence</th>
                         <th>Timestamp (UTC)</th>
+                        <th style="width: 130px; text-align: right;">Report</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,6 +58,11 @@
                             <span class="score-badge">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
                         </td>
                         <td class="timestamp-text">{{ r.timestamp }}</td>
+                        <td style="text-align: right;">
+                            <a href="{{ url_for('view_result', record_id=r.id) }}" class="btn btn-outline btn-sm" style="padding: 4px 10px; font-size: var(--fs-xs);">
+                                View &amp; Rx &rarr;
+                            </a>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -74,6 +80,11 @@
                         <span class="score-badge">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
                     </div>
                     <div class="timestamp-text" style="margin-top:4px;">Case #{{ r.id }} &bull; {{ r.timestamp }}</div>
+                    <div style="margin-top: 6px;">
+                        <a href="{{ url_for('view_result', record_id=r.id) }}" style="font-size: var(--fs-xs); color: var(--clr-accent); font-weight: 600; text-decoration: none;">
+                            View Assessment &amp; Rx Protocol &rarr;
+                        </a>
+                    </div>
                 </div>
             </div>
             {% endfor %}

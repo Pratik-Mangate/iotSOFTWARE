@@ -26,6 +26,7 @@ from werkzeug.utils import secure_filename
 import config
 import db
 import model_service
+import clinical_protocols
 
 # ── Flask app ────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -185,12 +186,50 @@ def predict():
         top3_json=json.dumps(result["top3"]),
     )
 
+    treatment_protocol = clinical_protocols.get_protocol(result["predicted"])
+
     return render_template(
         "result.html",
         image_file=filename,
         result=result,
+        treatment_protocol=treatment_protocol,
         model_available=True,
         timestamp=timestamp,
+    )
+
+
+@app.route("/result/<int:record_id>")
+def view_result(record_id):
+    """View an archived diagnostic report with its full clinical protocol."""
+    records = db.get_history()
+    target = None
+    for r in records:
+        if r["id"] == record_id:
+            target = r
+            break
+    if not target:
+        flash("Case record not found.", "warning")
+        return redirect(url_for("history"))
+
+    try:
+        top3 = json.loads(target["top3"]) if target.get("top3") else []
+    except Exception:
+        top3 = []
+
+    result = {
+        "predicted": target["predicted"],
+        "confidence": target["confidence"],
+        "top3": top3,
+    }
+    treatment_protocol = clinical_protocols.get_protocol(target["predicted"])
+
+    return render_template(
+        "result.html",
+        image_file=target["image_file"],
+        result=result,
+        treatment_protocol=treatment_protocol,
+        model_available=True,
+        timestamp=target["timestamp"],
     )
 
 
