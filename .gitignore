@@ -1,0 +1,34 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Uploads (runtime user data)
+uploads/*
+!uploads/.gitkeep
+
+# Database
+instance/
+
+# Model weights
+models/*.pth
+models/*.pt
+models/*.h5
+# Allow the 16MB ONNX model for Vercel deployment:
+!models/skindisnet_model.onnx
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp
+extract_cells.py

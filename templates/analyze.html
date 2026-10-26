@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Analyze Skin &mdash; DermaScan Clinical AI{% endblock %}
+
+{% block content %}
+<section class="hero fade-in">
+    <div class="hero-text">
+        <h1>Analyze Skin Image</h1>
+        <p class="subtitle">Upload a dermoscopic photo or take a picture with your mobile device to run deep-learning lesion classification.</p>
+    </div>
+    {% if not model_available %}
+    <span class="model-badge badge-warn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Model unavailable &mdash; image will upload but inference cannot execute
+    </span>
+    {% endif %}
+</section>
+
+<div class="upload-layout fade-in">
+    <!-- Main Upload Card -->
+    <div class="upload-card">
+        <form id="analyze-form" action="{{ url_for('predict') }}" method="post" enctype="multipart/form-data">
+            <!-- Drag and drop zone -->
+            <div class="drop-zone" id="drop-zone">
+                <div class="drop-zone-icon-box">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                </div>
+                <div class="drop-zone-title">Drag &amp; drop skin image here</div>
+                <div class="drop-zone-subtitle">or <strong style="color:var(--clr-accent);">click to browse your files</strong></div>
+                <div class="drop-zone-specs">
+                    <span class="spec-pill">JPEG</span>
+                    <span class="spec-pill">PNG</span>
+                    <span class="spec-pill">WebP</span>
+                    <span class="spec-pill">Max 10 MB</span>
+                </div>
+                <!-- File input for browser -->
+                <input type="file"
+                       id="skin-image-input"
+                       name="skin_image"
+                       accept="image/jpeg,image/png,image/webp"
+                       style="display:none;">
+            </div>
+
+            <div class="capture-divider">Mobile Camera Capture</div>
+
+            <!-- Mobile Camera Buttons -->
+            <div class="capture-row">
+                <label class="btn btn-outline" style="cursor:pointer;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Take Photo (Rear Camera)
+                    <input type="file"
+                           id="camera-input"
+                           name="camera_image"
+                           accept="image/*"
+                           capture="environment"
+                           style="display:none;">
+                </label>
+
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('skin-image-input').click();">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Choose from Gallery
+                </button>
+            </div>
+
+            <!-- Selected Image Preview -->
+            <div class="preview-container" id="preview-container">
+                <img id="preview-image" class="preview-thumb" src="" alt="Selected skin sample">
+                <div class="preview-meta">
+                    <div class="preview-filename" id="preview-filename"></div>
+                    <div class="preview-status">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Ready for inference
+                    </div>
+                </div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="clearPreview()" style="margin-left:auto;">
+                    Remove
+                </button>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="btn-group centered" style="margin-top:var(--sp-8);">
+                <button type="submit" class="btn btn-primary" id="analyze-btn" disabled style="min-width: 200px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Run AI Analysis
+                </button>
+                <a href="{{ url_for('index') }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Clinical Protocol Guidelines -->
+    <div class="guidelines-card">
+        <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            Clinical Imaging Protocol
+        </h3>
+        <p style="font-size: var(--fs-xs); color: var(--clr-text-muted); margin-bottom: var(--sp-4);">
+            To optimize classification accuracy and avoid false positives:
+        </p>
+        <ul class="guidelines-list">
+            <li class="guidelines-item">
+                <span class="guidelines-bullet">1</span>
+                <div><strong>Adequate Illumination:</strong> Use natural or bright diffuse light. Avoid heavy glare or flash reflections directly on the lesion.</div>
+            </li>
+            <li class="guidelines-item">
+                <span class="guidelines-bullet">2</span>
+                <div><strong>Centering &amp; Framing:</strong> Ensure the affected region occupies the central 60&ndash;80% of the image frame.</div>
+            </li>
+            <li class="guidelines-item">
+                <span class="guidelines-bullet">3</span>
+                <div><strong>Sharp Focus:</strong> Tap to autofocus on the skin texture. Blurry or out-of-focus samples degrade model confidence.</div>
+            </li>
+            <li class="guidelines-item">
+                <span class="guidelines-bullet">4</span>
+                <div><strong>Obstruction Removal:</strong> Clear hair, bandages, or jewelry from the lesion perimeter before capture.</div>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loader-overlay" id="loader-overlay">
+    <div class="spinner"></div>
+    <p class="loader-text">Evaluating lesion with EfficientNet-B0&hellip;</p>
+</div>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}System Specifications &mdash; DermaScan Clinical AI{% endblock %}
+
+{% block content %}
+<section class="hero fade-in">
+    <div class="hero-text">
+        <h1>System Specifications &amp; Architecture</h1>
+        <p class="subtitle">Technical documentation, deep learning pipeline parameters, and clinical diagnostic categories.</p>
+    </div>
+</section>
+
+<div class="about-grid fade-in">
+    <!-- Left Column: Narrative Documentation -->
+    <div class="prose-section">
+        <h2>About This Project</h2>
+        <p>
+            <strong>DermaScan Skin Monitor</strong> is a dermatological decision-support prototype engineered to evaluate how fine-tuned deep convolutional networks can assist clinical image triage. The application takes clinical photographs, applies ImageNet-standardized normalization transforms, and performs forward inference via a fine-tuned <strong>EfficientNet-B0</strong> backbone.
+        </p>
+
+        <h2>Supported Diagnostic Pathologies</h2>
+        <p>The model was trained on multi-class clinical skin lesion datasets to recognize six distinct dermatological conditions:</p>
+        <div class="chip-group">
+            {% for name in class_names %}
+            <span class="tech-chip">{{ name }}</span>
+            {% endfor %}
+        </div>
+
+        <h2>Inference &amp; Execution Pipeline</h2>
+        <p>
+            To guarantee real-time evaluation speeds across all consumer operating systems without native C++ DLL conflicts, inference is executed using <strong>ONNX Runtime</strong> with the <code>CPUExecutionProvider</code>. The model weights are contained within a single optimized graph representation, eliminating external dependencies at runtime.
+        </p>
+
+        <h2>Local Data Security &amp; Patient Privacy</h2>
+        <p>
+            All submitted images, preprocessed tensors, and historical prediction records remain strictly stored on the local server. No telemetry or biometric data is transmitted to cloud APIs or third-party analytical endpoints. Case records can be purged at any time from the evaluation registry.
+        </p>
+
+        <h2>Clinical Device &amp; Wi-Fi Access Protocol</h2>
+        <p>To access this interface from an Android smartphone or tablet on the same Wi-Fi network:</p>
+        <ol style="margin-left: var(--sp-6); margin-bottom: var(--sp-6); color: var(--clr-text-secondary); line-height: 1.8;">
+            <li>Verify both the host machine and mobile phone are joined to the <strong>same Wi-Fi network</strong>.</li>
+            <li>Note the <strong>Phone URL</strong> displayed in the server terminal (e.g. <code>http://192.168.1.x:5000</code>).</li>
+            <li>Open Google Chrome on Android and navigate directly to the address.</li>
+            <li>Tap <strong>Take Photo (Rear Camera)</strong> to capture lesions with the phone camera directly into the model.</li>
+        </ol>
+    </div>
+
+    <!-- Right Column: Specs Card -->
+    <div class="specs-sidebar">
+        <div class="card">
+            <h3 style="font-size: var(--fs-md); font-weight: 700; margin-bottom: var(--sp-3);">
+                Model Parameters
+            </h3>
+            <ul class="spec-list">
+                <li class="spec-item">
+                    <span class="label">Architecture</span>
+                    <span class="val">EfficientNet-B0</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Runtime</span>
+                    <span class="val">ONNX Runtime</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Execution Provider</span>
+                    <span class="val">CPUExecutionProvider</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Input Resolution</span>
+                    <span class="val">224 &times; 224 &times; 3</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Normalization</span>
+                    <span class="val">ImageNet Mean/Std</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Output Layer</span>
+                    <span class="val">6-class Softmax</span>
+                </li>
+                <li class="spec-item">
+                    <span class="label">Engine Status</span>
+                    <span class="val" style="color: {% if model_available %}var(--clr-success){% else %}var(--clr-warning){% endif %};">
+                        {% if model_available %}Ready (Loaded){% else %}Offline{% endif %}
+                    </span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card" style="background-color: var(--clr-surface-subtle);">
+            <h3 style="font-size: var(--fs-sm); font-weight: 700; margin-bottom: var(--sp-2);">
+                Software Disclaimer
+            </h3>
+            <p style="font-size: var(--fs-xs); color: var(--clr-text-muted); line-height: 1.6;">
+                DermaScan is an educational research tool. It has not received FDA/CE-mark clearance for diagnostic use and should never override professional medical judgment.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

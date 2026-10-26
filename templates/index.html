@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Skin Monitor Dashboard &mdash; DermaScan Clinical AI{% endblock %}
+
+{% block content %}
+<!-- Dashboard Hero Header -->
+<section class="hero fade-in">
+    <div class="hero-text">
+        <h1>Skin Monitor Dashboard</h1>
+        <p class="subtitle">AI-assisted lesion classification and clinical documentation system powered by EfficientNet-B0.</p>
+    </div>
+    <div class="hero-actions">
+        {% if model_available %}
+        <span class="model-badge badge-ok">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Inference Engine Active (ONNX)
+        </span>
+        {% else %}
+        <span class="model-badge badge-warn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            Model Checkpoint Offline
+        </span>
+        {% endif %}
+        <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Start Analysis
+        </a>
+    </div>
+</section>
+
+<!-- Dashboard Primary Metric Cards -->
+<div class="dashboard-grid fade-in">
+    <!-- Quick Evaluation Card -->
+    <div class="card stat-card">
+        <div>
+            <div class="stat-top">
+                <div class="stat-icon-wrapper">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                </div>
+                <span class="stat-badge">Clinical Action</span>
+            </div>
+            <div class="stat-value" style="font-size: var(--fs-xl);">Analyze Skin Image</div>
+            <p class="stat-label">Upload a dermoscopic photo or capture directly using your smartphone camera for instant differential diagnosis.</p>
+        </div>
+        <a href="{{ url_for('analyze') }}" class="btn btn-accent btn-sm">
+            Launch Analysis &rarr;
+        </a>
+    </div>
+
+    <!-- Case Registry Summary -->
+    <div class="card stat-card">
+        <div>
+            <div class="stat-top">
+                <div class="stat-icon-wrapper">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                </div>
+                <span class="stat-badge">Registry</span>
+            </div>
+            <div class="stat-value">{{ total_cases | default(recent_history | length) }}</div>
+            <p class="stat-label">Total patient cases evaluated and archived with softmax probability distributions and image assets.</p>
+        </div>
+        <a href="{{ url_for('history') }}" class="btn btn-outline btn-sm">
+            Browse Registry &rarr;
+        </a>
+    </div>
+
+    <!-- Diagnostic Scope -->
+    <div class="card stat-card">
+        <div>
+            <div class="stat-top">
+                <div class="stat-icon-wrapper">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <span class="stat-badge">Scope</span>
+            </div>
+            <div class="stat-value">6 Classes</div>
+            <p class="stat-label">Multi-class classification covering Atopic Dermatitis, Eczema, Scabies, and related skin conditions.</p>
+        </div>
+        <a href="{{ url_for('about') }}" class="btn btn-outline btn-sm">
+            Review Model Specs &rarr;
+        </a>
+    </div>
+</div>
+
+<!-- Recent Activity Registry -->
+{% if recent_history %}
+<section class="card fade-in" style="margin-top: var(--sp-6);">
+    <div class="table-toolbar">
+        <div>
+            <h2>Recent Clinical Assessments</h2>
+            <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">Latest image classifications logged in the local database</p>
+        </div>
+        <a href="{{ url_for('history') }}" class="btn btn-outline btn-sm">View Full History</a>
+    </div>
+
+    <div class="history-cards" style="margin-top: var(--sp-4);">
+        {% for r in recent_history %}
+        <div class="history-card-item">
+            <img src="{{ url_for('uploaded_file', filename=r.image_file) }}" alt="Analysis sample #{{ r.id }}" loading="lazy">
+            <div class="history-card-info">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <span class="pred">{{ r.predicted }}</span>
+                    <span class="condition-pill" style="font-size:11px; padding:2px 8px; font-weight:700;">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
+                </div>
+                <div class="ts">
+                    <span style="font-weight:600; color:var(--clr-text-secondary);">Case #{{ r.id }}</span> &bull; <span>{{ r.timestamp }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+
+{% else %}
+
+<!-- Empty State Guide when no evaluations are recorded yet -->
+<section class="card fade-in" style="margin-top: var(--sp-6); text-align:center; padding: var(--sp-12) var(--sp-6);">
+    <div style="width:48px; height:48px; border-radius:var(--radius-md); background-color:var(--clr-surface-muted); color:var(--clr-accent); display:flex; align-items:center; justify-content:center; margin:0 auto var(--sp-4); border:1px solid var(--clr-border);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </div>
+    <h2 style="font-size:var(--fs-lg); margin-bottom:var(--sp-2);">No Clinical Evaluations Yet</h2>
+    <p style="color:var(--clr-text-muted); font-size:var(--fs-sm); max-width:480px; margin:0 auto var(--sp-6);">
+        Upload your first skin lesion photograph or snap a picture with your phone camera to run the classification model and log results here.
+    </p>
+    <a href="{{ url_for('analyze') }}" class="btn btn-primary">Start First Analysis</a>
+</section>
+{% endif %}
+
+<!-- Diagnostic Scope Reference Grid -->
+<section style="margin-top: var(--sp-10);" class="fade-in">
+    <div style="margin-bottom: var(--sp-4);">
+        <h2 style="font-size: var(--fs-lg); font-weight: 700;">Diagnostic Classification Scope</h2>
+        <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">The deep convolutional model is trained to identify and differentiate the following 6 dermatological conditions:</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:var(--sp-4);">
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">1. Atopic Dermatitis</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Chronic pruritic inflammatory skin condition presenting with xerosis, erythematous patches, and flexural lichenification.</p>
+        </div>
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">2. Contact Dermatitis</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Localized acute cutaneous eruption triggered by direct skin contact with exogenous irritants or allergens.</p>
+        </div>
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">3. Eczema</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Broad dermatological spectrum featuring superficial skin inflammation, scaling, microvesicles, and pruritus.</p>
+        </div>
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">4. Scabies</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Contagious parasitic infestation by <em>Sarcoptes scabiei</em> with intense nocturnal pruritus and characteristic burrows.</p>
+        </div>
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">5. Seborrheic Dermatitis</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Inflammatory condition affecting sebum-dense cutaneous areas, displaying greasy scales and erythematous plaques.</p>
+        </div>
+        <div class="card" style="padding:var(--sp-4);">
+            <div style="font-weight:700; color:var(--clr-text-primary); font-size:var(--fs-sm); margin-bottom:4px;">6. Tinea Corporis</div>
+            <p style="font-size:var(--fs-xs); color:var(--clr-text-muted); line-height:1.5;">Superficial dermatophytic fungal infection presenting with sharply demarcated, annular, erythematous scaling lesions.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

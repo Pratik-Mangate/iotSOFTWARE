@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Evaluation Registry &mdash; DermaScan Clinical AI{% endblock %}
+
+{% block content %}
+<section class="hero fade-in">
+    <div class="hero-text">
+        <h1>Evaluation Case Registry</h1>
+        <p class="subtitle">Chronological record of archived skin image evaluations, differential predictions, and diagnostic confidence metrics.</p>
+    </div>
+    <div class="hero-actions">
+        <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            New Analysis
+        </a>
+    </div>
+</section>
+
+<section class="fade-in">
+    {% if records %}
+    <div class="table-container">
+        <div class="table-toolbar">
+            <div>
+                <h2>Archived Clinical Evaluations ({{ records | length }})</h2>
+                <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">Stored locally in encrypted SQLite database</p>
+            </div>
+            <form action="{{ url_for('clear_history') }}" method="post" onsubmit="return confirmClear();">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    Clear All Records
+                </button>
+            </form>
+        </div>
+
+        <!-- Desktop Table View -->
+        <div class="history-table-wrap">
+            <table class="history-table" id="history-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">Case ID</th>
+                        <th style="width: 80px;">Sample</th>
+                        <th>Predicted Pathology</th>
+                        <th>Classification Confidence</th>
+                        <th>Timestamp (UTC)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr>
+                        <td class="case-id">#{{ r.id }}</td>
+                        <td>
+                            <img class="case-thumb" src="{{ url_for('uploaded_file', filename=r.image_file) }}" alt="Case #{{ r.id }}" loading="lazy">
+                        </td>
+                        <td>
+                            <span class="condition-pill">{{ r.predicted }}</span>
+                        </td>
+                        <td>
+                            <span class="score-badge">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
+                        </td>
+                        <td class="timestamp-text">{{ r.timestamp }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Responsive Cards -->
+        <div class="history-cards-view">
+            {% for r in records %}
+            <div class="history-card-row">
+                <img class="case-thumb" src="{{ url_for('uploaded_file', filename=r.image_file) }}" alt="Case #{{ r.id }}" loading="lazy">
+                <div style="flex:1; min-width:0;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="condition-pill">{{ r.predicted }}</span>
+                        <span class="score-badge">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
+                    </div>
+                    <div class="timestamp-text" style="margin-top:4px;">Case #{{ r.id }} &bull; {{ r.timestamp }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="card empty-state-box">
+        <div class="empty-state-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+        </div>
+        <div class="empty-state-title">No Case Evaluations Recorded</div>
+        <p class="empty-state-desc">Evaluated clinical images and their differential predictions will automatically archive here for comparative review.</p>
+        <div class="btn-group centered" style="margin-top:var(--sp-6);">
+            <a href="{{ url_for('analyze') }}" class="btn btn-primary">Start First Analysis</a>
+        </div>
+    </div>
+    {% endif %}
+</section>
+{% endblock %}
