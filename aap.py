@@ -6,6 +6,8 @@ inference, and prediction history.
 
 Entry point:  python aap.py
 """
+import base64
+import io
 import json
 import os
 import uuid
@@ -76,6 +78,7 @@ def _save_upload(file_storage):
     # Generate a unique filename to prevent collisions
     ext = orig_name.rsplit(".", 1)[1].lower()
     unique_name = f"{uuid.uuid4().hex}.{ext}"
+    os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
     save_path = os.path.join(config.UPLOAD_FOLDER, unique_name)
 
     file_storage.save(save_path)
@@ -95,6 +98,20 @@ def _save_upload(file_storage):
         raise ValueError("The uploaded file appears to be empty or too small.")
 
     return unique_name, img
+
+
+def _image_to_base64(pil_image):
+    """Convert PIL image to compact base64 JPEG data URL for self-contained persistence."""
+    try:
+        buf = io.BytesIO()
+        rgb_img = pil_image.convert("RGB")
+        rgb_img.thumbnail((450, 450), Image.Resampling.LANCZOS)
+        rgb_img.save(buf, format="JPEG", quality=82)
+        encoded = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return f"data:image/jpeg;base64,{encoded}"
+    except Exception as exc:
+        print(f"[_image_to_base64] Conversion warning: {exc}")
+        return ""
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
@@ -178,58 +195,85 @@ def predict():
 
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
-    # Persist to history
-    db.save_prediction(
+    # Generate persistent base64 thumbnail for self-contained image persistence
+    b64_data = _image_to_base64(pil_image)
+
+    # Persist to history with image_data
+    record_id = db.save_prediction(
         image_file=filename,
         predicted=result["predicted"],
         confidence=result["confidence"],
         top3_json=json.dumps(result["top3"]),
+        image_data=b64_data,
     )
 
     treatment_protocol = clinical_protocols.get_protocol(result["predicted"])
 
     return render_template(
         "result.html",
+        record_id=record_id,
         image_file=filename,
+        image_data=b64_data,
         result=result,
         treatment_protocol=treatment_protocol,
         model_available=True,
         timestamp=timestamp,
+        all_protocols=clinical_protocols.PROTOCOLS,
     )
 
 
-@app.route("/result/<int:record_id>")
+@app.route("/result/<record_id>")
 def view_result(record_id):
     """View an archived diagnostic report with its full clinical protocol."""
-    records = db.get_history()
-    target = None
-    for r in records:
-        if r["id"] == record_id:
-            target = r
-            break
-    if not target:
-        flash("Case record not found.", "warning")
-        return redirect(url_for("history"))
-
     try:
-        top3 = json.loads(target["top3"]) if target.get("top3") else []
-    except Exception:
-        top3 = []
+        int_id = int(record_id)
+        target = db.get_record(int_id)
+    except (ValueError, TypeError):
+        int_id = None
+        target = None
 
-    result = {
-        "predicted": target["predicted"],
-        "confidence": target["confidence"],
-        "top3": top3,
-    }
-    treatment_protocol = clinical_protocols.get_protocol(target["predicted"])
+    if not target and int_id is not None:
+        for r in db.get_history():
+            if r["id"] == int_id:
+                target = r
+                break
 
+    if target:
+        try:
+            top3 = json.loads(target["top3"]) if target.get("top3") else []
+        except Exception:
+            top3 = []
+
+        result = {
+            "predicted": target["predicted"],
+            "confidence": target["confidence"],
+            "top3": top3,
+        }
+        treatment_protocol = clinical_protocols.get_protocol(target["predicted"])
+
+        return render_template(
+            "result.html",
+            record_id=target["id"],
+            image_file=target["image_file"],
+            image_data=target.get("image_data"),
+            result=result,
+            treatment_protocol=treatment_protocol,
+            model_available=True,
+            timestamp=target["timestamp"],
+            all_protocols=clinical_protocols.PROTOCOLS,
+        )
+
+    # Resilient fallback for serverless container rotation on Vercel:
+    # Render result.html with client_lookup_id so client-side localStorage restores
+    # the entire diagnostic case, photo, and prescription protocol instantly!
     return render_template(
         "result.html",
-        image_file=target["image_file"],
-        result=result,
-        treatment_protocol=treatment_protocol,
+        client_lookup_id=record_id,
+        record_id=record_id,
+        result=None,
         model_available=True,
-        timestamp=target["timestamp"],
+        timestamp="",
+        all_protocols=clinical_protocols.PROTOCOLS,
     )
 
 
@@ -243,7 +287,11 @@ def history():
             r["top3_parsed"] = json.loads(r.get("top3") or "[]")
         except Exception:
             r["top3_parsed"] = []
-    return render_template("history.html", records=records)
+    return render_template(
+        "history.html",
+        records=records,
+        all_protocols=clinical_protocols.PROTOCOLS,
+    )
 
 
 @app.route("/history/clear", methods=["POST"])

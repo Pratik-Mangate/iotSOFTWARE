@@ -15,15 +15,32 @@
     </div>
 </section>
 
-<section class="fade-in">
-    {% if records %}
-    <div class="table-container">
+<section class="fade-in" id="history-section">
+    <!-- Server records data payload for client synchronization -->
+    <script id="server-records-payload" type="application/json">
+    [
+        {% for r in records %}
+        {
+            "id": {{ r.id | tojson }},
+            "timestamp": {{ r.timestamp | tojson }},
+            "predicted": {{ r.predicted | tojson }},
+            "confidence": {{ r.confidence | tojson }},
+            "image_data": {{ (r.image_data or '') | tojson }},
+            "image_file": {{ (r.image_file or '') | tojson }},
+            "top3": {{ r.top3_parsed | tojson if r.top3_parsed is defined else '[]' }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ]
+    </script>
+
+    <!-- Table Container (rendered if server records exist, or hydrated by client-side storage) -->
+    <div class="table-container" id="history-table-container" style="{% if not records %}display:none;{% endif %}">
         <div class="table-toolbar">
             <div>
-                <h2>Archived Clinical Evaluations ({{ records | length }})</h2>
-                <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">Stored locally in encrypted SQLite database</p>
+                <h2 id="history-count-heading">Archived Clinical Evaluations ({{ records | length }})</h2>
+                <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">Evaluation Case Registry with diagnostic metrics &amp; clinical sample imagery</p>
             </div>
-            <form action="{{ url_for('clear_history') }}" method="post" onsubmit="return confirmClear();">
+            <form action="{{ url_for('clear_history') }}" method="post" id="clear-history-form" onsubmit="return confirmClear();">
                 <button type="submit" class="btn btn-danger btn-sm">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                     Clear All Records
@@ -44,12 +61,16 @@
                         <th style="width: 130px; text-align: right;">Report</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="history-table-body">
                     {% for r in records %}
-                    <tr>
+                    <tr data-record-id="{{ r.id }}">
                         <td class="case-id">#{{ r.id }}</td>
                         <td>
-                            <img class="case-thumb" src="{{ url_for('uploaded_file', filename=r.image_file) }}" alt="Case #{{ r.id }}" loading="lazy">
+                            <img class="case-thumb"
+                                 src="{{ r.image_data or (url_for('uploaded_file', filename=r.image_file) if r.image_file else '') }}"
+                                 alt="Case #{{ r.id }}"
+                                 loading="lazy"
+                                 onerror="this.style.opacity='0.4';">
                         </td>
                         <td>
                             <span class="condition-pill">{{ r.predicted }}</span>
@@ -70,10 +91,14 @@
         </div>
 
         <!-- Mobile Responsive Cards -->
-        <div class="history-cards-view">
+        <div class="history-cards-view" id="history-cards-container">
             {% for r in records %}
-            <div class="history-card-row">
-                <img class="case-thumb" src="{{ url_for('uploaded_file', filename=r.image_file) }}" alt="Case #{{ r.id }}" loading="lazy">
+            <div class="history-card-row" data-record-id="{{ r.id }}">
+                <img class="case-thumb"
+                     src="{{ r.image_data or (url_for('uploaded_file', filename=r.image_file) if r.image_file else '') }}"
+                     alt="Case #{{ r.id }}"
+                     loading="lazy"
+                     onerror="this.style.opacity='0.4';">
                 <div style="flex:1; min-width:0;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <span class="condition-pill">{{ r.predicted }}</span>
@@ -91,9 +116,8 @@
         </div>
     </div>
 
-    {% else %}
     <!-- Empty State -->
-    <div class="card empty-state-box">
+    <div class="card empty-state-box" id="history-empty-state" style="{% if records %}display:none;{% endif %}">
         <div class="empty-state-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -108,6 +132,5 @@
             <a href="{{ url_for('analyze') }}" class="btn btn-primary">Start First Analysis</a>
         </div>
     </div>
-    {% endif %}
 </section>
 {% endblock %}

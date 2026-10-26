@@ -20,7 +20,7 @@
 <div class="result-grid fade-in">
     <!-- Clinical Sample Visual -->
     <div class="result-image-box">
-        <img src="{{ url_for('uploaded_file', filename=image_file) }}" alt="Clinical skin evaluation sample">
+        <img src="{{ image_data or (url_for('uploaded_file', filename=image_file) if image_file else '') }}" alt="Clinical skin evaluation sample">
         <p style="font-size: var(--fs-xs); color: var(--clr-text-muted); margin-top: var(--sp-3);">
             Submitted Clinical Photograph (Input Dimension: 224&times;224 px normalized)
         </p>
@@ -212,6 +212,36 @@
         Always consult a board-certified dermatologist or qualified healthcare provider for proper diagnosis, dermoscopy, and medical treatment.
     </div>
 </div>
+
+<!-- Embedded payload for persistent client-side registry caching -->
+<script id="current-eval-payload" type="application/json">
+{
+    "id": {{ record_id | default(0) | tojson }},
+    "timestamp": {{ timestamp | default('') | tojson }},
+    "image_data": {{ (image_data or '') | tojson }},
+    "image_file": {{ (image_file or '') | tojson }},
+    "predicted": {{ result.predicted | tojson }},
+    "confidence": {{ result.confidence | tojson }},
+    "top3": {{ result.top3 | tojson }},
+    "treatment_protocol": {{ treatment_protocol | tojson if treatment_protocol else 'null' }}
+}
+</script>
+
+{% elif client_lookup_id %}
+<!-- Dynamic Restoration Container for Serverless Container Rotations -->
+<div id="client-restoration-area" data-lookup-id="{{ client_lookup_id }}">
+    <div class="card fade-in" style="text-align:center; padding:var(--sp-12) var(--sp-6); margin-top:var(--sp-6);">
+        <div class="loader-spinner" style="margin:0 auto var(--sp-4);"></div>
+        <h2>Restoring Diagnostic Report #{{ client_lookup_id }}...</h2>
+        <p style="color:var(--clr-text-muted); max-width:520px; margin:var(--sp-2) auto;">
+            Retrieving archived case details, clinical photograph, and treatment protocols from your local device registry.
+        </p>
+    </div>
+</div>
+
+<script id="all-clinical-protocols" type="application/json">
+{{ all_protocols | tojson }}
+</script>
 
 {% elif not model_available %}
 <div class="card fade-in" style="text-align:center; padding:var(--sp-12) var(--sp-6); margin-top:var(--sp-6);">

@@ -251,3 +251,30 @@ def test_view_result_with_protocol(client):
     assert b"Permethrin 5% Dermal Cream" in resp.data
     assert b"Simultaneous Household Treatment" in resp.data
 
+
+def test_view_result_client_fallback_when_db_missing(client):
+    """GET /result/<nonexistent_id> should not crash or redirect, but provide client restoration container."""
+    resp = client.get("/result/99999")
+    assert resp.status_code == 200
+    assert b"client-restoration-area" in resp.data
+    assert b'data-lookup-id="99999"' in resp.data
+    assert b"all-clinical-protocols" in resp.data
+
+
+def test_history_embeds_server_payload(client):
+    """GET /history should render server-records-payload script for client hydration."""
+    import db as db_module
+    db_module.save_prediction(
+        "test.jpg",
+        "Eczema",
+        0.91,
+        json.dumps([{"class": "Eczema", "confidence": 0.91}]),
+        image_data="data:image/jpeg;base64,mockbase64data"
+    )
+    resp = client.get("/history")
+    assert resp.status_code == 200
+    assert b"server-records-payload" in resp.data
+    assert b"data:image/jpeg;base64,mockbase64data" in resp.data
+    assert b"case-thumb" in resp.data
+
+
