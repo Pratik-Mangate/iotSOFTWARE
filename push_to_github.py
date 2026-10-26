@@ -13,10 +13,10 @@ repo_path = r"d:\_Projects\iot"
 
 def main():
     if len(sys.argv) > 1:
-        token = sys.argv[1].strip()
+        token = sys.argv[1].strip("<>\"' ")
     else:
         try:
-            token = input("Enter your GitHub Personal Access Token: ").strip()
+            token = input("Enter your GitHub Personal Access Token: ").strip("<>\"' ")
         except EOFError:
             token = ""
 
