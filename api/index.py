@@ -1,5 +1,6 @@
 import os
 import sys
+from urllib.parse import parse_qs
 
 # Add parent directory to sys.path for Vercel serverless execution
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -30,16 +31,16 @@ class VercelPathMiddleware:
         self.wsgi_app = wsgi_app
 
     def __call__(self, environ, start_response):
-        # 1. Prefer HTTP_X_MATCHED_PATH which Vercel populates on rewrites
-        matched = environ.get("HTTP_X_MATCHED_PATH")
-        if matched:
-            environ["PATH_INFO"] = matched.split("?")[0]
-        else:
-            # 2. If Vercel passed /api/index prefix in PATH_INFO, strip it
-            path_info = environ.get("PATH_INFO", "")
-            if path_info.startswith("/api/index"):
-                remainder = path_info[len("/api/index"):]
-                environ["PATH_INFO"] = remainder if remainder else "/"
+        query_string = environ.get("QUERY_STRING", "")
+        params = parse_qs(query_string)
+
+        if "path" in params and params["path"]:
+            subpath = params["path"][0].strip("/")
+            environ["PATH_INFO"] = f"/{subpath}" if subpath else "/"
+        elif environ.get("HTTP_X_MATCHED_PATH"):
+            environ["PATH_INFO"] = environ["HTTP_X_MATCHED_PATH"].split("?")[0]
+        elif environ.get("PATH_INFO", "").startswith("/api/index"):
+            environ["PATH_INFO"] = "/"
 
         return self.wsgi_app(environ, start_response)
 
