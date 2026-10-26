@@ -102,16 +102,27 @@ def _save_upload(file_storage):
 @app.route("/api/index")
 @app.route("/api/index/")
 def index():
-    """Dashboard landing page."""
-    all_history = db.get_history()
-    recent = all_history[:5]  # last 5 for the dashboard widget
     return render_template(
         "index.html",
         model_available=model_service.is_available(),
-        recent_history=recent,
-        total_cases=len(all_history),
+        recent_history=db.get_history()[:5],
+        total_cases=len(db.get_history()),
         class_names=model_service.get_class_names(),
     )
+
+
+@app.route("/debug-env")
+def debug_env():
+    data = {
+        "PATH_INFO": request.environ.get("PATH_INFO"),
+        "RAW_URI": request.environ.get("RAW_URI"),
+        "REQUEST_URI": request.environ.get("REQUEST_URI"),
+        "HTTP_X_MATCHED_PATH": request.environ.get("HTTP_X_MATCHED_PATH"),
+        "HTTP_X_NOW_ROUTE_MATCHES": request.environ.get("HTTP_X_NOW_ROUTE_MATCHES"),
+        "HTTP_X_FORWARDED_URI": request.environ.get("HTTP_X_FORWARDED_URI"),
+        "headers": {k: v for k, v in request.headers.items() if "auth" not in k.lower() and "cookie" not in k.lower()}
+    }
+    return json.dumps(data, indent=2), 200, {"Content-Type": "application/json"}
 
 
 @app.route("/analyze")
