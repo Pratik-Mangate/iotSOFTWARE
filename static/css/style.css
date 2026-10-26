@@ -1483,232 +1483,504 @@ a:hover {
 }
 
 .protocol-description {
-    font-size: var(--fs-sm);
-    color: var(--clr-text-secondary);
-    line-height: 1.6;
-    margin-bottom: var(--sp-6);
-    padding: var(--sp-3) var(--sp-4);
-    background-color: var(--clr-surface-subtle);
-    border-radius: var(--radius-md);
-    border-left: 3px solid var(--clr-accent);
+    display: none;
 }
 
-.protocol-sub-block {
-    margin-bottom: var(--sp-6);
-}
-
-.block-title-row {
+/* ── Summary Callout ───────────────────────────────────────────── */
+.protocol-summary-box {
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    margin-bottom: var(--sp-3);
-    color: var(--clr-text-primary);
+    align-items: flex-start;
+    gap: var(--sp-3);
+    background-color: var(--clr-surface-subtle);
+    border: 1px solid var(--clr-border);
+    border-left: 4px solid var(--clr-accent);
+    border-radius: var(--radius-md);
+    padding: var(--sp-3) var(--sp-4);
+    margin-bottom: var(--sp-6);
 }
 
-.block-title-row h3 {
-    font-size: var(--fs-base);
+.summary-icon {
+    color: var(--clr-accent);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-label {
+    display: block;
+    font-size: 11px;
     font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--clr-accent);
+    margin-bottom: 2px;
+}
+
+.summary-text {
+    font-size: var(--fs-xs);
+    color: var(--clr-text-secondary);
+    line-height: 1.5;
     margin: 0;
 }
 
-.rx-symbol {
-    font-family: serif;
-    font-weight: 900;
-    font-size: var(--fs-lg);
-    color: var(--clr-accent);
+/* ── Interactive View Tabs ─────────────────────────────────────── */
+.protocol-nav-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    background: var(--clr-surface-muted);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    margin-bottom: var(--sp-6);
 }
 
+.proto-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--clr-text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.proto-tab-btn svg {
+    flex-shrink: 0;
+}
+
+.proto-tab-btn:hover {
+    color: var(--clr-text-primary);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.proto-tab-btn.active {
+    color: var(--clr-accent);
+    background: #ffffff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    font-weight: 700;
+}
+
+/* ── Section Block Containers ─────────────────────────────────── */
+.protocol-section-block {
+    margin-bottom: var(--sp-6);
+    padding-bottom: var(--sp-6);
+    border-bottom: 1px solid var(--clr-border-subtle);
+    transition: opacity var(--transition-fast);
+}
+
+.protocol-section-block:last-of-type {
+    border-bottom: none;
+    margin-bottom: var(--sp-4);
+    padding-bottom: 0;
+}
+
+.section-block-header {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-4);
+}
+
+.section-num-pill {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: var(--clr-accent-subtle);
+    color: var(--clr-accent);
+    border: 1.5px solid var(--clr-accent-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 12px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.section-num-pill.warning-pill {
+    background-color: var(--clr-warning-bg);
+    color: var(--clr-warning-text);
+    border-color: var(--clr-warning-border);
+}
+
+.section-block-header h3 {
+    font-size: var(--fs-base);
+    font-weight: 700;
+    color: var(--clr-text-primary);
+    margin: 0 0 2px 0;
+}
+
+.section-subtext {
+    font-size: var(--fs-xs);
+    color: var(--clr-text-muted);
+    margin: 0;
+}
+
+/* ── Section 1: Prescription Rx Cards ─────────────────────────── */
 .rx-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: var(--sp-3);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--sp-4);
 }
 
-.rx-card {
+.rx-card-modern {
     background-color: var(--clr-surface);
     border: 1px solid var(--clr-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     padding: var(--sp-4);
     display: flex;
     flex-direction: column;
-    gap: var(--sp-2);
-    transition: border-color var(--trans-fast);
+    gap: var(--sp-3);
+    box-shadow: var(--shadow-card);
+    transition: all var(--transition-fast);
 }
 
-.rx-card:hover {
+.rx-card-modern:hover {
     border-color: var(--clr-accent-border);
+    box-shadow: var(--shadow-md);
 }
 
-.rx-card-top {
+.rx-card-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    gap: var(--sp-2);
+    gap: var(--sp-3);
+}
+
+.rx-symbol-mini {
+    font-family: serif;
+    font-weight: 900;
+    font-size: 1.35rem;
+    color: var(--clr-accent);
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .rx-med-name {
     font-size: var(--fs-sm);
     font-weight: 700;
     color: var(--clr-text-primary);
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
-.rx-class-tag {
-    font-size: var(--fs-2xs);
+.rx-class-badge {
+    display: inline-block;
+    font-size: 11px;
     font-weight: 600;
     color: var(--clr-accent);
     background: var(--clr-accent-subtle);
     border: 1px solid var(--clr-accent-border);
-    padding: 2px 6px;
+    padding: 2px 7px;
     border-radius: 4px;
-    white-space: nowrap;
+    margin-top: 4px;
 }
 
-.rx-dosage-box {
-    font-size: var(--fs-xs);
-    color: var(--clr-text-secondary);
-    line-height: 1.5;
-    background: var(--clr-surface-muted);
-    padding: var(--sp-2) var(--sp-3);
-    border-radius: var(--radius-sm);
-}
-
-.rx-note-text {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: var(--fs-2xs);
-    color: var(--clr-text-muted);
-    font-style: italic;
-}
-
-.rx-note-text svg {
-    flex-shrink: 0;
-    color: var(--clr-accent);
-}
-
-.adjunct-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--sp-3);
-}
-
-.adjunct-card {
-    background: var(--clr-surface-subtle);
+.rx-regimen-box {
+    background-color: var(--clr-surface-muted);
     border: 1px solid var(--clr-border-subtle);
     border-radius: var(--radius-md);
-    padding: var(--sp-3) var(--sp-4);
+    padding: 10px 12px;
 }
 
-.adjunct-name {
-    font-size: var(--fs-sm);
+.regimen-tag {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
     font-weight: 700;
-    color: var(--clr-text-primary);
-    margin-bottom: 2px;
-}
-
-.adjunct-purpose {
-    font-size: var(--fs-xs);
-    color: var(--clr-text-secondary);
+    color: var(--clr-text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     margin-bottom: 4px;
 }
 
-.adjunct-dosage {
-    font-size: var(--fs-2xs);
-    color: var(--clr-text-muted);
+.regimen-text {
+    font-size: var(--fs-xs);
+    color: var(--clr-text-primary);
+    font-weight: 600;
+    line-height: 1.5;
 }
 
-.measures-list {
+.rx-tip-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: var(--fs-xs);
+    color: #1e40af;
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-md);
+    padding: 8px 10px;
+    line-height: 1.45;
+}
+
+.rx-tip-box svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* ── Section 2: Daily Care & Routine ──────────────────────────── */
+.daily-care-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--sp-4);
+}
+
+.care-column-card {
+    background-color: var(--clr-surface);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    box-shadow: var(--shadow-card);
+}
+
+.care-column-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--sp-3);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid var(--clr-border-subtle);
+}
+
+.care-column-title h4 {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--clr-text-primary);
+    margin: 0;
+}
+
+.column-icon-circle {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.column-icon-circle.success-circle {
+    background: var(--clr-success-bg);
+    color: var(--clr-success);
+    border: 1px solid var(--clr-success-border);
+}
+
+.column-icon-circle.info-circle {
+    background: var(--clr-info-bg);
+    color: var(--clr-info);
+    border: 1px solid var(--clr-info-border);
+}
+
+.clean-check-list {
     list-style: none;
     padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--sp-2);
+    gap: 10px;
 }
 
-.measure-item {
+.clean-check-item {
     display: flex;
     align-items: flex-start;
-    gap: var(--sp-2);
-    font-size: var(--fs-sm);
+    gap: 10px;
+    font-size: var(--fs-xs);
     color: var(--clr-text-secondary);
     line-height: 1.5;
 }
 
-.measure-item svg {
-    margin-top: 3px;
+.check-icon-circle {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--clr-success-bg);
+    color: var(--clr-success);
+    border: 1px solid var(--clr-success-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.adjunct-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.adjunct-mini-card {
+    background-color: var(--clr-surface-muted);
+    border: 1px solid var(--clr-border-subtle);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+}
+
+.adjunct-mini-name {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--clr-text-primary);
+    margin-bottom: 2px;
+}
+
+.adjunct-mini-purpose {
+    font-size: 11px;
+    color: var(--clr-text-secondary);
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+.adjunct-mini-regimen {
+    font-size: 11px;
+    color: var(--clr-text-muted);
+}
+
+/* ── Section 3: Safety & Red Flags ────────────────────────────── */
+.safety-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--sp-4);
+}
+
+.safety-card {
+    border-radius: var(--radius-lg);
+    padding: var(--sp-4);
+    box-shadow: var(--shadow-card);
+}
+
+.precautions-card {
+    background-color: #fffdf5;
+    border: 1px solid #fde68a;
+}
+
+.urgent-card {
+    background-color: #fff5f5;
+    border: 1px solid #fecaca;
+}
+
+.safety-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: var(--sp-3);
+    padding-bottom: var(--sp-2);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.safety-card-header h4 {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    margin: 0;
+}
+
+.precautions-card h4 {
+    color: var(--clr-warning-text);
+}
+
+.urgent-card h4 {
+    color: var(--clr-error-text);
+}
+
+.safety-icon-box {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 }
 
-.contraindication-box {
-    background-color: var(--clr-warning-bg);
-    border: 1px solid var(--clr-warning-border);
-    border-radius: var(--radius-md);
-    padding: var(--sp-4);
-    margin-bottom: var(--sp-4);
+.safety-icon-box.warn-icon {
+    background: #fffbeb;
+    color: #d97706;
 }
 
-.contra-header {
+.safety-icon-box.alert-icon {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.safety-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    color: var(--clr-warning-text);
-    margin-bottom: var(--sp-2);
+    flex-direction: column;
+    gap: 10px;
 }
 
-.contra-header h4 {
-    font-size: var(--fs-sm);
-    font-weight: 700;
-    margin: 0;
-}
-
-.contra-list {
-    margin: 0;
-    padding-left: var(--sp-5);
-    font-size: var(--fs-xs);
-    color: var(--clr-warning-text);
-    line-height: 1.6;
-}
-
-.referral-box {
-    background-color: var(--clr-error-bg);
-    border: 1px solid var(--clr-error-border);
-    border-radius: var(--radius-md);
-    padding: var(--sp-4);
-    margin-bottom: var(--sp-4);
-}
-
-.referral-header {
+.safety-list li {
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    color: var(--clr-error-text);
-    margin-bottom: var(--sp-2);
-}
-
-.referral-header h4 {
-    font-size: var(--fs-sm);
-    font-weight: 700;
-    margin: 0;
-}
-
-.referral-list {
-    margin: 0;
-    padding-left: var(--sp-5);
+    align-items: flex-start;
+    gap: 10px;
     font-size: var(--fs-xs);
-    color: var(--clr-error-text);
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
-.rx-disclaimer {
-    font-size: var(--fs-2xs);
+.warn-items li {
+    color: var(--clr-warning-text);
+}
+
+.alert-items li {
+    color: var(--clr-error-text);
+}
+
+.bullet-x {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+    font-weight: 800;
+    font-size: 13px;
+    line-height: 16px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.bullet-alert {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #dc2626;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 11px;
+    line-height: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* ── Legal Notice Footer ──────────────────────────────────────── */
+.protocol-legal-footer {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 11px;
     color: var(--clr-text-muted);
     line-height: 1.5;
     border-top: 1px solid var(--clr-border);
-    padding-top: var(--sp-3);
-    margin-top: var(--sp-4);
-    margin-bottom: 0;
+    padding-top: var(--sp-4);
+    margin-top: var(--sp-6);
+}
+
+.protocol-legal-footer svg {
+    flex-shrink: 0;
+    margin-top: 2px;
+    color: var(--clr-text-secondary);
 }
 
 /* ── Print Stylesheet for Diagnostic Reports ──────────────────── */

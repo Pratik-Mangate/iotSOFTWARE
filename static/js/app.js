@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initNavToggle();
     initDropZone();
     initAnalyzeForm();
+    initProtocolTabs();
     syncCurrentResult();
     hydrateHistoryPage();
     restoreClientReport();
@@ -406,18 +407,27 @@ function restoreClientReport() {
     let protoHtml = "";
     if (proto) {
         const rxCards = (proto.rx_first_line || []).map(rx => `
-            <div class="rx-card">
-                <div class="rx-card-top">
-                    <div class="rx-med-name">${escapeHtml(rx.medication)}</div>
-                    <span class="rx-class-tag">${escapeHtml(rx.class_type)}</span>
+            <div class="rx-card-modern">
+                <div class="rx-card-header">
+                    <span class="rx-symbol-mini">℞</span>
+                    <div style="flex:1;">
+                        <div class="rx-med-name">${escapeHtml(rx.medication)}</div>
+                        <span class="rx-class-badge">${escapeHtml(rx.class_type)}</span>
+                    </div>
                 </div>
-                <div class="rx-dosage-box">
-                    <strong>Dosage &amp; Regimen:</strong> ${escapeHtml(rx.dosage)}
+
+                <div class="rx-regimen-box">
+                    <div class="regimen-tag">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        HOW TO APPLY / DOSAGE
+                    </div>
+                    <div class="regimen-text">${escapeHtml(rx.dosage)}</div>
                 </div>
+
                 ${rx.note ? `
-                <div class="rx-note-text">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                    <span>${escapeHtml(rx.note)}</span>
+                <div class="rx-tip-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--clr-accent)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span><strong>Clinical Tip:</strong> ${escapeHtml(rx.note)}</span>
                 </div>` : ""}
             </div>
         `).join("");
@@ -425,20 +435,22 @@ function restoreClientReport() {
         let adjunctBlock = "";
         if (proto.adjunct_otc && proto.adjunct_otc.length > 0) {
             const adjCards = proto.adjunct_otc.map(adj => `
-                <div class="adjunct-card">
-                    <div class="adjunct-name">${escapeHtml(adj.medication)}</div>
-                    <div class="adjunct-purpose">${escapeHtml(adj.purpose)}</div>
-                    <div class="adjunct-dosage"><strong>Regimen:</strong> ${escapeHtml(adj.dosage)}</div>
+                <div class="adjunct-mini-card">
+                    <div class="adjunct-mini-name">${escapeHtml(adj.medication)}</div>
+                    <div class="adjunct-mini-purpose">${escapeHtml(adj.purpose)}</div>
+                    <div class="adjunct-mini-regimen"><strong>Regimen:</strong> ${escapeHtml(adj.dosage)}</div>
                 </div>
             `).join("");
 
             adjunctBlock = `
-                <div class="protocol-sub-block">
-                    <div class="block-title-row">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M2 12h20"/></svg>
-                        <h3>Adjunct &amp; Symptomatic Measures</h3>
+                <div class="care-column-card">
+                    <div class="care-column-title">
+                        <div class="column-icon-circle info-circle">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20M2 12h20"/></svg>
+                        </div>
+                        <h4>Supportive &amp; Symptomatic Relief</h4>
                     </div>
-                    <div class="adjunct-grid">
+                    <div class="adjunct-cards-list">
                         ${adjCards}
                     </div>
                 </div>
@@ -446,21 +458,35 @@ function restoreClientReport() {
         }
 
         const measures = (proto.non_pharma_measures || []).map(m => `
-            <li class="measure-item">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--clr-accent)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <li class="clean-check-item">
+                <div class="check-icon-circle">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
                 <span>${escapeHtml(m)}</span>
             </li>
         `).join("");
 
-        const contraList = (proto.contraindications || []).map(c => `<li>${escapeHtml(c)}</li>`).join("");
-        const referralList = (proto.urgent_referral || []).map(r => `<li>${escapeHtml(r)}</li>`).join("");
+        const contraList = (proto.contraindications || []).map(c => `
+            <li>
+                <span class="bullet-x">&times;</span>
+                <span>${escapeHtml(c)}</span>
+            </li>
+        `).join("");
+
+        const referralList = (proto.urgent_referral || []).map(r => `
+            <li>
+                <span class="bullet-alert">!</span>
+                <span>${escapeHtml(r)}</span>
+            </li>
+        `).join("");
 
         protoHtml = `
-            <section class="card protocol-section fade-in">
+            <section class="card protocol-section fade-in" id="treatment-protocol-card">
+                <!-- Header -->
                 <div class="protocol-header">
                     <div class="protocol-header-title">
                         <div class="protocol-icon-box">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
                                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
                             </svg>
@@ -468,60 +494,127 @@ function restoreClientReport() {
                         <div>
                             <div class="protocol-badge-row">
                                 <span class="protocol-badge">${escapeHtml(proto.category)}</span>
-                                <span class="rx-pill">Clinical Rx Protocol</span>
+                                <span class="rx-pill">Standard Medical Protocol</span>
                             </div>
                             <h2 class="protocol-title">Treatment Protocol &amp; Prescription Guidance: ${escapeHtml(proto.title)}</h2>
                         </div>
                     </div>
                 </div>
 
-                <p class="protocol-description">${escapeHtml(proto.description)}</p>
-
-                <div class="protocol-sub-block">
-                    <div class="block-title-row">
-                        <span class="rx-symbol">℞</span>
-                        <h3>Primary Prescription Measures (First-Line Therapies)</h3>
+                <!-- Brief Overview Callout -->
+                <div class="protocol-summary-box">
+                    <div class="summary-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                     </div>
+                    <div class="summary-content">
+                        <span class="summary-label">Condition Overview</span>
+                        <p class="summary-text">${escapeHtml(proto.description)}</p>
+                    </div>
+                </div>
+
+                <!-- Quick Navigation Filter Tabs -->
+                <div class="protocol-nav-tabs" role="tablist">
+                    <button type="button" class="proto-tab-btn active" data-target="all">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                        All Guidance
+                    </button>
+                    <button type="button" class="proto-tab-btn" data-target="medications">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                        1. Prescribed Medications (Rx)
+                    </button>
+                    <button type="button" class="proto-tab-btn" data-target="daily-care">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        2. Daily Care &amp; Routine
+                    </button>
+                    <button type="button" class="proto-tab-btn" data-target="safety">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        3. Safety &amp; Red Flags
+                    </button>
+                </div>
+
+                <!-- Section 1: Prescribed Medications (First-Line Rx) -->
+                <div class="protocol-section-block" data-section="medications">
+                    <div class="section-block-header">
+                        <div class="section-num-pill">1</div>
+                        <div>
+                            <h3>Prescribed Medications (First-Line Therapies)</h3>
+                            <p class="section-subtext">Primary evidence-based pharmaceutical regimens for symptom relief and flare suppression.</p>
+                        </div>
+                    </div>
+
                     <div class="rx-cards-grid">
                         ${rxCards}
                     </div>
                 </div>
 
-                ${adjunctBlock}
-
-                <div class="protocol-sub-block">
-                    <div class="block-title-row">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        <h3>Non-Pharmacological Care &amp; Hygiene Measures</h3>
+                <!-- Section 2: Daily Skin Care & Supportive Remedies -->
+                <div class="protocol-section-block" data-section="daily-care">
+                    <div class="section-block-header">
+                        <div class="section-num-pill">2</div>
+                        <div>
+                            <h3>Daily Skin Care Routine &amp; Supportive Care</h3>
+                            <p class="section-subtext">Essential non-pharmacological habits and over-the-counter measures to rebuild the skin barrier.</p>
+                        </div>
                     </div>
-                    <ul class="measures-list">
-                        ${measures}
-                    </ul>
+
+                    <div class="daily-care-grid">
+                        <div class="care-column-card">
+                            <div class="care-column-title">
+                                <div class="column-icon-circle success-circle">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                                </div>
+                                <h4>Recommended Daily Habits</h4>
+                            </div>
+                            <ul class="clean-check-list">
+                                ${measures}
+                            </ul>
+                        </div>
+                        ${adjunctBlock}
+                    </div>
                 </div>
 
-                <div class="contraindication-box">
-                    <div class="contra-header">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-                        <h4>Critical Precautions &amp; Contraindications</h4>
+                <!-- Section 3: Safety Warnings & Red Flags -->
+                <div class="protocol-section-block" data-section="safety">
+                    <div class="section-block-header">
+                        <div class="section-num-pill warning-pill">3</div>
+                        <div>
+                            <h3>Safety Precautions &amp; When to See a Doctor</h3>
+                            <p class="section-subtext">Critical safety precautions and urgent warning signs that necessitate physician intervention.</p>
+                        </div>
                     </div>
-                    <ul class="contra-list">
-                        ${contraList}
-                    </ul>
+
+                    <div class="safety-cards-grid">
+                        <div class="safety-card precautions-card">
+                            <div class="safety-card-header">
+                                <div class="safety-icon-box warn-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                </div>
+                                <h4>Important Precautions (What to Avoid)</h4>
+                            </div>
+                            <ul class="safety-list warn-items">
+                                ${contraList}
+                            </ul>
+                        </div>
+
+                        <div class="safety-card urgent-card">
+                            <div class="safety-card-header">
+                                <div class="safety-icon-box alert-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                </div>
+                                <h4>Seek Immediate In-Person Evaluation If:</h4>
+                            </div>
+                            <ul class="safety-list alert-items">
+                                ${referralList}
+                            </ul>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="referral-box">
-                    <div class="referral-header">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <h4>When to Seek Immediate In-Person Dermatologist Evaluation</h4>
-                    </div>
-                    <ul class="referral-list">
-                        ${referralList}
-                    </ul>
+                <!-- Clean Legal Prescription Notice Footer -->
+                <div class="protocol-legal-footer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span><strong>Prescription Notice:</strong> Dosages, formulations, and durations listed above are curated from standard dermatological reference guidelines. Prescription medicines must only be dispensed and used under the direct clinical assessment and prescription of a qualified healthcare provider.</span>
                 </div>
-
-                <p class="rx-disclaimer">
-                    <strong>Prescription Notice:</strong> Pharmaceutical regimens, active dosages, and application durations listed above are curated from standard clinical dermatological reference standards. Prescription medications must only be dispensed and initiated under the direct clinical assessment and prescription of a licensed medical practitioner.
-                </p>
             </section>
         `;
     }
@@ -578,6 +671,34 @@ function restoreClientReport() {
             </div>
         </div>
     `;
+
+    // Re-initialize interactive tabs on dynamically restored section
+    initProtocolTabs();
+}
+
+/* Interactive Navigation Tabs for Clinical Protocol Section */
+function initProtocolTabs() {
+    const tabButtons = document.querySelectorAll(".proto-tab-btn");
+    if (!tabButtons.length) return;
+
+    tabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+            const target = btn.getAttribute("data-target");
+            tabButtons.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+
+            const sections = document.querySelectorAll(".protocol-section-block");
+            sections.forEach(sec => {
+                const secType = sec.getAttribute("data-section");
+                if (target === "all" || secType === target) {
+                    sec.style.display = "";
+                    sec.style.opacity = "1";
+                } else {
+                    sec.style.display = "none";
+                }
+            });
+        });
+    });
 }
 
 /* Hydrate Dashboard summary counters from client registry */
