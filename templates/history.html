@@ -89,31 +89,6 @@
                 </tbody>
             </table>
         </div>
-
-        <!-- Mobile Responsive Cards -->
-        <div class="history-cards-view" id="history-cards-container">
-            {% for r in records %}
-            <div class="history-card-row" data-record-id="{{ r.id }}">
-                <img class="case-thumb"
-                     src="{{ r.image_data or (url_for('uploaded_file', filename=r.image_file) if r.image_file else '') }}"
-                     alt="Case #{{ r.id }}"
-                     loading="lazy"
-                     onerror="this.style.opacity='0.4';">
-                <div style="flex:1; min-width:0;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="condition-pill">{{ r.predicted }}</span>
-                        <span class="score-badge">{{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%</span>
-                    </div>
-                    <div class="timestamp-text" style="margin-top:4px;">Case #{{ r.id }} &bull; {{ r.timestamp }}</div>
-                    <div style="margin-top: 6px;">
-                        <a href="{{ url_for('view_result', record_id=r.id) }}" style="font-size: var(--fs-xs); color: var(--clr-accent); font-weight: 600; text-decoration: none;">
-                            View Assessment &amp; Rx Protocol &rarr;
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
     </div>
 
     <!-- Empty State -->

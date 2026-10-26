@@ -251,7 +251,6 @@ function hydrateHistoryPage() {
     const tableWrap = document.getElementById("history-table-container");
     const emptyState = document.getElementById("history-empty-state");
     const tbody = document.getElementById("history-table-body");
-    const cardsContainer = document.getElementById("history-cards-container");
     const countHeading = document.getElementById("history-count-heading");
     const clearForm = document.getElementById("clear-history-form");
 
@@ -319,32 +318,6 @@ function hydrateHistoryPage() {
                         </a>
                     </td>
                 </tr>
-            `;
-        }).join("");
-    }
-
-    // Rebuild mobile cards
-    if (cardsContainer) {
-        cardsContainer.innerHTML = stored.map(r => {
-            const pct = r.confidence ? `${(r.confidence * 100).toFixed(1)}%` : "N/A";
-            const imgSrc = r.image_data || (r.image_file ? `/uploads/${encodeURIComponent(r.image_file)}` : "");
-            return `
-                <div class="history-card-row" data-record-id="${escapeHtml(String(r.id))}">
-                    <img class="case-thumb" src="${imgSrc}" alt="Case #${escapeHtml(String(r.id))}" loading="lazy"
-                         onerror="this.style.opacity='0.4';">
-                    <div style="flex:1; min-width:0;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="condition-pill">${escapeHtml(r.predicted)}</span>
-                            <span class="score-badge">${pct}</span>
-                        </div>
-                        <div class="timestamp-text" style="margin-top:4px;">Case #${escapeHtml(String(r.id))} &bull; ${escapeHtml(r.timestamp || "")}</div>
-                        <div style="margin-top: 6px;">
-                            <a href="/result/${encodeURIComponent(String(r.id))}" style="font-size: var(--fs-xs); color: var(--clr-accent); font-weight: 600; text-decoration: none;">
-                                View Assessment &amp; Rx Protocol &rarr;
-                            </a>
-                        </div>
-                    </div>
-                </div>
             `;
         }).join("");
     }
