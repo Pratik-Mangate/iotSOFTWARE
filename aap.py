@@ -99,6 +99,8 @@ def _save_upload(file_storage):
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/")
+@app.route("/api/index")
+@app.route("/api/index/")
 def index():
     """Dashboard landing page."""
     all_history = db.get_history()
