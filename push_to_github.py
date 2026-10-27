@@ -6,13 +6,26 @@ Usage:
     python push_to_github.py
 """
 
+import os
 import sys
+import subprocess
 import urllib.request
 import urllib.error
 import json
-from dulwich import porcelain
 
-repo_path = r"d:\_Projects\iot"
+try:
+    from dulwich import porcelain
+except ImportError:
+    # Auto-fallback to virtual environment python if available
+    venv_python = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv", "Scripts", "python.exe")
+    if os.path.isfile(venv_python) and os.path.abspath(sys.executable).lower() != os.path.abspath(venv_python).lower():
+        result = subprocess.run([venv_python, os.path.abspath(__file__)] + sys.argv[1:])
+        sys.exit(result.returncode)
+    print("Error: 'dulwich' is not installed in the current Python environment.")
+    print("Run using the virtual environment: .\\.venv\\Scripts\\python.exe push_to_github.py")
+    sys.exit(1)
+
+repo_path = os.path.abspath(os.path.dirname(__file__))
 
 def test_token_permissions(token):
     # Check what user the token belongs to
