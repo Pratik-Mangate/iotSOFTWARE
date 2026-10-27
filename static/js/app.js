@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
     hydrateHistoryPage();
     restoreClientReport();
     hydrateDashboard();
+    initSensorPolling();
 });
 
 
@@ -962,6 +963,144 @@ function hydrateDashboard() {
                 </a>
             `;
         }).join("");
+    }
+}
+
+
+/* ── Live IoT Environmental Telemetry Polling (Raspberry Pi 3 + DHT11) ────── */
+function initSensorPolling() {
+    const card = document.getElementById("iot-telemetry-card");
+    if (!card) return;
+
+    const badgeEl    = document.getElementById("sensor-status-badge");
+    const labelEl    = document.getElementById("sensor-status-label");
+    const tempValEl  = document.getElementById("sensor-temp-val");
+    const humValEl   = document.getElementById("sensor-hum-val");
+    const tempSubEl  = document.getElementById("sensor-temp-sub");
+    const humSubEl   = document.getElementById("sensor-hum-sub");
+    const deviceIdEl = document.getElementById("sensor-device-id");
+    const lastSeenEl = document.getElementById("sensor-last-seen");
+    const refreshBtn = document.getElementById("sensor-refresh-btn");
+
+    let isFetching = false;
+
+    function formatRelativeTime(seconds) {
+        if (seconds === null || seconds === undefined) return "Never";
+        if (seconds < 5) return "Just now";
+        if (seconds < 60) return `${seconds}s ago`;
+        const mins = Math.floor(seconds / 60);
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.floor(mins / 60);
+        return `${hrs}h ago`;
+    }
+
+    async function fetchSensorTelemetry() {
+        if (isFetching) return;
+        isFetching = true;
+        if (refreshBtn) refreshBtn.classList.add("refreshing");
+
+        try {
+            const resp = await fetch("/api/sensor/latest", {
+                headers: { "Accept": "application/json" },
+                cache: "no-store",
+            });
+
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}`);
+            }
+
+            const data = await resp.json();
+            renderTelemetry(data);
+        } catch (err) {
+            console.warn("[DermaScan IoT] Sensor poll error:", err);
+            if (badgeEl) {
+                badgeEl.className = "sensor-status-badge status-offline";
+            }
+            if (labelEl) labelEl.textContent = "Network Error";
+            if (tempSubEl) tempSubEl.textContent = "Unable to reach sensor gateway.";
+            if (humSubEl) humSubEl.textContent = "Will retry automatically.";
+        } finally {
+            isFetching = false;
+            if (refreshBtn) {
+                setTimeout(() => refreshBtn.classList.remove("refreshing"), 400);
+            }
+        }
+    }
+
+    function renderTelemetry(data) {
+        if (!data) return;
+
+        const status = data.status || "offline";
+        if (deviceIdEl && data.device_id) deviceIdEl.textContent = data.device_id;
+
+        // Reset badge classes
+        if (badgeEl) {
+            badgeEl.className = `sensor-status-badge status-${status}`;
+        }
+
+        if (status === "online") {
+            if (labelEl) labelEl.textContent = "Online (Live)";
+            if (tempValEl && data.temperature !== null) tempValEl.textContent = Number(data.temperature).toFixed(1);
+            if (humValEl && data.humidity !== null) humValEl.textContent = Number(data.humidity).toFixed(1);
+
+            // Contextual comfort evaluation
+            if (tempSubEl) {
+                const t = Number(data.temperature);
+                if (t > 28) tempSubEl.textContent = "Elevated clinical room temp — may increase pruritus.";
+                else if (t < 18) tempSubEl.textContent = "Cool environment — monitor skin barrier xerosis.";
+                else tempSubEl.textContent = "Optimal clinical examination range (19°C – 26°C).";
+            }
+
+            if (humSubEl) {
+                const h = Number(data.humidity);
+                if (h < 35) humSubEl.textContent = "Low humidity — promotes trans-epidermal water loss (TEWL).";
+                else if (h > 70) humSubEl.textContent = "High humidity — may promote microbial proliferation.";
+                else humSubEl.textContent = "Balanced ambient relative humidity (40% – 60%).";
+            }
+
+            if (lastSeenEl) lastSeenEl.textContent = formatRelativeTime(data.age_seconds);
+        } else if (status === "stale") {
+            if (labelEl) labelEl.textContent = `Stale (${data.age_seconds}s)`;
+            if (tempValEl && data.temperature !== null) tempValEl.textContent = Number(data.temperature).toFixed(1);
+            if (humValEl && data.humidity !== null) humValEl.textContent = Number(data.humidity).toFixed(1);
+            if (tempSubEl) tempSubEl.textContent = "Telemetry paused (>60s old). Awaiting transmission.";
+            if (humSubEl) humSubEl.textContent = "Previous reading held for environmental reference.";
+            if (lastSeenEl) lastSeenEl.textContent = formatRelativeTime(data.age_seconds);
+        } else if (status === "offline") {
+            if (labelEl) labelEl.textContent = "Pi Sensor Offline";
+            if (tempValEl) tempValEl.textContent = "--";
+            if (humValEl) humValEl.textContent = "--";
+            if (tempSubEl) tempSubEl.textContent = "Raspberry Pi not transmitting.";
+            if (humSubEl) humSubEl.textContent = "Check Wi-Fi and power on Raspberry Pi 3.";
+            if (lastSeenEl) lastSeenEl.textContent = data.age_seconds ? formatRelativeTime(data.age_seconds) : "Offline";
+        } else if (status === "waiting_for_sensor") {
+            if (labelEl) labelEl.textContent = "Waiting for Sensor";
+            if (tempValEl) tempValEl.textContent = "--";
+            if (humValEl) humValEl.textContent = "--";
+            if (tempSubEl) tempSubEl.textContent = "Run raspberry_pi/send_sensor.py on your Pi 3.";
+            if (humSubEl) humSubEl.textContent = "Awaiting initial DHT11 transmission.";
+            if (lastSeenEl) lastSeenEl.textContent = "Awaiting 1st packet";
+        } else if (status === "unconfigured") {
+            if (labelEl) labelEl.textContent = "Supabase Unconfigured";
+            if (tempValEl) tempValEl.textContent = "--";
+            if (humValEl) humValEl.textContent = "--";
+            if (tempSubEl) tempSubEl.textContent = "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.";
+            if (humSubEl) humSubEl.textContent = "See README for Supabase configuration steps.";
+            if (lastSeenEl) lastSeenEl.textContent = "Not configured";
+        }
+    }
+
+    // Initial fetch immediately
+    fetchSensorTelemetry();
+
+    // Auto-poll every 15 seconds
+    setInterval(fetchSensorTelemetry, 15000);
+
+    // Manual refresh button listener
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+            fetchSensorTelemetry();
+        });
     }
 }
 

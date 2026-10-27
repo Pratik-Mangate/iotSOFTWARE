@@ -184,21 +184,238 @@ notebook is supported. To use a different format (ONNX, TFLite, etc.),
 
 ---
 
-## Routes
+## 🌡️ IoT Environmental Telemetry Integration (Raspberry Pi 3 + DHT11)
 
-| Method | Path | Description |
+An integrated hardware-to-cloud environmental telemetry pipeline monitoring ambient clinical room climate (temperature & relative humidity). Environmental context assists in understanding skin barrier trans-epidermal water loss (TEWL) during dermatological evaluations.
+
+### System Architecture
+
+```
+┌─────────────────────────────────┐
+│     Raspberry Pi 3 Model B      │
+│  ┌───────────────────────────┐  │
+│  │   DHT11 Sensor (GPIO4)    │  │
+│  └─────────────┬─────────────┘  │
+│                │ Reads real T & RH
+│  ┌─────────────▼─────────────┐  │
+│  │ raspberry_pi/send_sensor  │  │
+│  └─────────────┬─────────────┘  │
+└────────────────┼────────────────┘
+                 │ Authenticated HTTPS POST (X-API-Token)
+                 │ Every 15 seconds
+                 ▼
+┌─────────────────────────────────┐
+│      Vercel Serverless API      │
+│    https://iot-software.vercel  │
+│  ┌───────────────────────────┐  │
+│  │     POST /api/sensor      │  │
+│  │ Constant-time auth & val  │  │
+│  └─────────────┬─────────────┘  │
+└────────────────┼────────────────┘
+                 │ Parameterized REST API
+                 ▼
+┌─────────────────────────────────┐
+│       Supabase PostgreSQL       │
+│  ┌───────────────────────────┐  │
+│  │  Table: sensor_readings   │  │
+│  │  Row Level Security (RLS) │  │
+│  └───────────────────────────┘  │
+└────────────────┬────────────────┘
+                 │
+                 │ GET /api/sensor/latest (Live Poll every 15s)
+                 ▼
+┌─────────────────────────────────┐
+│  Clinical Dashboard (Frontend)  │
+│  - Ambient Temp (°C)            │
+│  - Relative Humidity (% RH)     │
+│  - Online / Stale / Offline Dot │
+│  - Examination Room Context     │
+└─────────────────────────────────┘
+```
+
+> **🔒 Clinical Independence:** IoT sensor readings serve solely as environmental context and do **not** alter or weight the trained EfficientNet-B0 skin lesion classification model.
+
+---
+
+### Hardware Wiring Table
+
+For the standard 3-pin DHT11 module:
+
+| DHT11 Pin Label | Function | Raspberry Pi 3 Physical Pin | BCM / GPIO Number | Voltage / Notes |
+|---|---|---|---|---|
+| **VCC / `+` / `V`** | Power | **Pin 1** | 3.3V Power | Use 3.3V (do not use 5V to protect GPIOs) |
+| **DATA / `OUT` / `S`** | Data Signal | **Pin 7** | **GPIO 4** | Configured with `use_pulseio=False` |
+| **GND / `-` / `G`** | Ground | **Pin 6** | Ground | Ground reference |
+
+> **⚠️ Wiring Tip:** Verify the silk-screened labels (`+`, `out`, `-`) printed directly on your DHT11 breakout module, as pin ordering can vary between manufacturers.
+
+---
+
+### Raspberry Pi 3 Setup & Execution
+
+#### 1. System Packages & Virtual Environment on Raspberry Pi OS
+On modern Raspberry Pi OS (Bookworm / Bullseye) with externally managed Python:
+
+```bash
+# Update package list and install system libraries
+sudo apt-get update
+sudo apt-get install -y python3-pip python3-venv libgpiod2 git
+
+# Clone repository or transfer the project folder
+git clone https://github.com/Pratik-Mangate/iotSOFTWARE.git
+cd iotSOFTWARE/raspberry_pi
+
+# Create dedicated virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install CircuitPython and hardware dependencies
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+#### 2. Configure Environment Variables
+Copy `.env.example` to `.env` and set your secret token:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Set the following parameters:
+```ini
+SERVER_URL=https://iot-software.vercel.app/api/sensor
+SENSOR_API_TOKEN=your_strong_secret_token_here
+DEVICE_ID=skin-monitor-pi
+SENSOR_INTERVAL_SECONDS=15
+```
+
+#### 3. Run the Sender Application
+```bash
+python send_sensor.py
+```
+
+Expected output on Raspberry Pi:
+```text
+2026-10-27 22:50:00 [INFO] DHT11 sensor initialized on GPIO4 (Physical Pin 7).
+2026-10-27 22:50:00 [INFO] Beginning continuous environmental monitoring loop...
+2026-10-27 22:50:02 [INFO] Telemetry transmitted successfully -> Temp: 24.0°C | Humidity: 55.0% | Device: skin-monitor-pi (HTTP 201)
+```
+
+#### 4. Run Automatically in Background (systemd Daemon)
+To run 24/7 on boot:
+
+```bash
+# Edit path if your project is not in /home/pi/iot/
+sudo cp derma-sensor.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable derma-sensor.service
+sudo systemctl start derma-sensor.service
+
+# View live telemetry service logs
+journalctl -u derma-sensor.service -f
+```
+
+---
+
+### Cloud Database Setup (Supabase PostgreSQL)
+
+1. Create a free project at [Supabase](https://supabase.com).
+2. Open the **SQL Editor** tab in your Supabase dashboard.
+3. Paste and run the contents of [`supabase_schema.sql`](supabase_schema.sql).
+4. Go to **Project Settings -> API** to obtain:
+   - **Project URL** (e.g., `https://xyzcompany.supabase.co`)
+   - **service_role secret key** (under `Project API keys` -> `service_role secret`).
+
+---
+
+### Vercel Deployment & Environment Variables
+
+Add the following environment variables in your **Vercel Project Dashboard** under **Settings -> Environment Variables**:
+
+| Variable Name | Required | Example / Description |
 |---|---|---|
-| GET | `/` | Dashboard |
-| GET | `/analyze` | Image upload / camera page |
-| POST | `/predict` | Upload + run inference |
-| GET | `/history` | Prediction history |
-| POST | `/history/clear` | Clear all history & images |
-| GET | `/about` | Project information |
-| GET | `/uploads/<file>` | Serve uploaded images |
+| `SUPABASE_URL` | **Yes** | `https://xyzcompany.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Yes** | Your Supabase `service_role` private secret key |
+| `SENSOR_API_TOKEN` | **Yes** | Secret matching `SENSOR_API_TOKEN` in the Pi's `.env` |
+| `EXPECTED_DEVICE_ID` | Optional | `skin-monitor-pi` (defaults to `skin-monitor-pi`) |
+| `SENSOR_STALE_SECONDS` | Optional | `60` (seconds before readings display as stale) |
+
+After saving environment variables in Vercel, redeploy your project:
+```powershell
+python push_to_github.py
+```
+
+---
+
+### API Endpoint Specification
+
+#### 1. Ingest Sensor Telemetry
+- **Method:** `POST /api/sensor`
+- **Headers:**
+  - `Content-Type: application/json`
+  - `X-API-Token: <SENSOR_API_TOKEN>`
+- **Request Body:**
+  ```json
+  {
+    "device_id": "skin-monitor-pi",
+    "temperature": 25.4,
+    "humidity": 58.2
+  }
+  ```
+- **Response (201 Created):**
+  ```json
+  {
+    "status": "success",
+    "message": "Sensor reading recorded successfully.",
+    "data": {
+      "device_id": "skin-monitor-pi",
+      "temperature": 25.4,
+      "humidity": 58.2,
+      "recorded_at": "2026-10-27T17:20:00.000000+00:00"
+    }
+  }
+  ```
+
+#### 2. Get Latest Sensor Telemetry (Public Dashboard Endpoint)
+- **Method:** `GET /api/sensor/latest`
+- **Response (200 OK):**
+  ```json
+  {
+    "status": "online",
+    "device_id": "skin-monitor-pi",
+    "temperature": 25.4,
+    "humidity": 58.2,
+    "recorded_at": "2026-10-27T17:20:00+00:00",
+    "age_seconds": 14,
+    "is_stale": false,
+    "message": "Sensor online and actively transmitting."
+  }
+  ```
+
+#### 3. Get 24-Hour Historical Readings
+- **Method:** `GET /api/sensor/history?hours=24&limit=100`
+- **Response (200 OK):**
+  ```json
+  {
+    "status": "success",
+    "device_id": "skin-monitor-pi",
+    "count": 24,
+    "readings": [
+      {
+        "temperature": 25.4,
+        "humidity": 58.2,
+        "recorded_at": "2026-10-27T17:20:00+00:00"
+      }
+    ]
+  }
+  ```
 
 ---
 
 ## Running Tests
+
+Execute the full automated pytest suite (including all AI classification and IoT sensor tests):
 
 ```powershell
 .venv\Scripts\activate
@@ -206,76 +423,52 @@ python -m pytest tests/ -v
 ```
 
 Tests cover:
-- All GET routes (200 responses)
-- Valid image upload
-- Missing / empty / invalid / unsupported uploads
-- Oversized file rejection
+- All GET routes and Jinja2 rendering (200 OK)
+- Valid image upload and inference against EfficientNet-B0 ONNX model
+- Missing, empty, invalid, and unsupported file uploads
+- Client and server payload size safeguards
 - Path traversal filename sanitisation
-- History creation and clearing
-- 404 error handling
-- Model-unavailable scenarios
+- Local prediction history persistence and hydration
+- Valid authenticated sensor POST (201)
+- Missing, invalid, and unconfigured token authentication (401 / 503)
+- Non-JSON payload and missing fields validation (400)
+- Boolean, NaN, and Infinity type rejection (400)
+- Out-of-bounds temperature and humidity rejection (400)
+- Database insertion failure handling (502)
+- Fresh, stale, and offline telemetry calculation
+- VercelPathMiddleware URL rewrites compatibility
 
 ---
 
-## Interpreting Results
+## IoT Troubleshooting Guide
 
-- **Predicted Condition:** The class with the highest softmax score.
-- **Confidence:** The model's internal certainty (0–100%). This is
-  **not** the probability that you have a disease.
-- **Top 3 Predictions:** The three most likely classes, useful when
-  the model is uncertain.
-
-| Confidence | Interpretation |
-|---|---|
-| ≥ 70% | The model is relatively confident |
-| 40–69% | Moderate confidence — consider a clearer image |
-| < 40% | Low confidence — the result is unreliable |
+| Issue | Root Cause | Solution |
+|---|---|---|
+| `DHT11 timing retry / RuntimeError` | DHT11 is single-wire time-critical; Linux multitasking causes occasional timing dropouts. | Normal behavior. The sender script retries 3 times automatically. |
+| `HTTP 401 Unauthorized` | Token mismatch between Raspberry Pi and Vercel. | Verify `SENSOR_API_TOKEN` matches in both the Pi's `.env` and Vercel Environment Variables. |
+| `HTTP 503 Server Configuration Missing` | Vercel environment variables are not set. | Add `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SENSOR_API_TOKEN` in Vercel settings and redeploy. |
+| Dashboard says `Stale (>60s)` | Pi has stopped transmitting or interval exceeds 60s. | Check Pi power, Wi-Fi connectivity, or check service status: `sudo systemctl status derma-sensor`. |
+| `ModuleNotFoundError: No module named 'adafruit_dht'` | Missing Adafruit library in Pi virtualenv. | Run `source .venv/bin/activate && pip install adafruit-circuitpython-dht`. |
 
 ---
 
-## Troubleshooting
+## Configuration Summary
 
-| Problem | Solution |
-|---|---|
-| `ModuleNotFoundError: No module named 'flask'` | Activate the venv: `.venv\Scripts\activate` and install deps |
-| `ModuleNotFoundError: No module named 'torch'` | Run `pip install torch torchvision timm` |
-| Model loads but inference fails | Ensure the checkpoint matches EfficientNet-B0 with 6 classes |
-| Phone can't connect | Check both devices are on the same Wi-Fi; check firewall rules |
-| 413 error on upload | Image exceeds 10 MB limit — resize or compress it |
-| "AI Model Unavailable" | Place `skindisnet_groupbalanced_best.pth` in `models/` and restart |
-| Port 5000 already in use | Set `FLASK_PORT=5001` environment variable before running |
-
----
-
-## Known Limitations
-
-- The AI model has **not** been clinically validated.
-- Classification accuracy depends heavily on image quality and lighting.
-- The model only recognises 6 skin conditions — images of other
-  conditions will be misclassified into one of these classes.
-- The Flask development server is **not** production-grade.
-- HTTPS is not configured (required for `getUserMedia` camera API on
-  some browsers, but Android Chrome allows it over plain HTTP on local
-  network).
-
----
-
-## Configuration
-
-Environment variables (all optional):
-
-| Variable | Default | Description |
+| Variable | Default | Purpose |
 |---|---|---|
 | `FLASK_HOST` | `0.0.0.0` | Bind address |
 | `FLASK_PORT` | `5000` | Port number |
-| `FLASK_DEBUG` | `0` | Set to `1` for debug mode (dev only) |
-| `MODEL_PATH` | `models/skindisnet_groupbalanced_best.pth` | Path to model |
-| `MAX_UPLOAD_MB` | `10` | Max upload size in megabytes |
-| `DATABASE_PATH` | `instance/history.db` | SQLite database path |
-| `SECRET_KEY` | (built-in dev key) | Flask session secret |
+| `FLASK_DEBUG` | `0` | Debug mode |
+| `ONNX_MODEL_PATH` | `models/skindisnet_model.onnx` | ONNX classifier path |
+| `SUPABASE_URL` | *(empty)* | Supabase project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | *(empty)* | Supabase service role secret |
+| `SENSOR_API_TOKEN` | *(empty)* | Shared secret for Pi authentication |
+| `EXPECTED_DEVICE_ID` | `skin-monitor-pi` | Authorized hardware ID |
+| `SENSOR_STALE_SECONDS` | `60` | Threshold for stale telemetry |
 
 ---
 
 ## License
 
-Student project — no specific license declared.
+Student project — educational and research prototype.
+

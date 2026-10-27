@@ -91,6 +91,107 @@
     </div>
 </div>
 
+<!-- Live IoT Environmental Telemetry Section (Raspberry Pi 3 + DHT11) -->
+<section class="card iot-telemetry-card fade-in" id="iot-telemetry-card" style="margin-top: var(--sp-6);">
+    <div class="table-toolbar iot-toolbar">
+        <div style="display: flex; align-items: center; gap: var(--sp-3);">
+            <div class="stat-icon-wrapper iot-icon-wrapper">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+                </svg>
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;">
+                    <h2 style="margin: 0; font-size: var(--fs-md); font-weight: 700;">IoT Environmental Telemetry</h2>
+                    <span class="iot-source-badge">Raspberry Pi 3 &bull; DHT11</span>
+                </div>
+                <p style="font-size: var(--fs-xs); color: var(--clr-text-muted); margin: 2px 0 0 0;">
+                    Live ambient examination room climate via authenticated edge sensor telemetry
+                </p>
+            </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;">
+            <div class="sensor-status-badge status-loading" id="sensor-status-badge">
+                <span class="sensor-dot"></span>
+                <span id="sensor-status-label">Connecting...</span>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm iot-refresh-btn" id="sensor-refresh-btn" title="Refresh reading">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="refresh-icon">
+                    <path d="M23 4v6h-6M1 20v-6h6"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+                <span>Refresh</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Telemetry Display Grid -->
+    <div class="iot-metrics-grid">
+        <!-- Temperature Card -->
+        <div class="iot-metric-box">
+            <div class="iot-metric-header">
+                <span class="iot-metric-title">Ambient Temperature</span>
+                <span class="iot-metric-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                </span>
+            </div>
+            <div class="iot-metric-val-row">
+                <span class="iot-metric-val" id="sensor-temp-val">--</span>
+                <span class="iot-metric-unit">°C</span>
+            </div>
+            <div class="iot-metric-sub" id="sensor-temp-sub">Reading sensor...</div>
+        </div>
+
+        <!-- Relative Humidity Card -->
+        <div class="iot-metric-box">
+            <div class="iot-metric-header">
+                <span class="iot-metric-title">Relative Humidity</span>
+                <span class="iot-metric-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                </span>
+            </div>
+            <div class="iot-metric-val-row">
+                <span class="iot-metric-val" id="sensor-hum-val">--</span>
+                <span class="iot-metric-unit">% RH</span>
+            </div>
+            <div class="iot-metric-sub" id="sensor-hum-sub">Reading sensor...</div>
+        </div>
+
+        <!-- Telemetry Device Meta Card -->
+        <div class="iot-metric-box iot-meta-box">
+            <div class="iot-metric-header">
+                <span class="iot-metric-title">Telemetry Node Meta</span>
+                <span class="iot-metric-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                </span>
+            </div>
+            <div class="iot-meta-row">
+                <span class="meta-label">Device Node:</span>
+                <span class="meta-val" id="sensor-device-id">skin-monitor-pi</span>
+            </div>
+            <div class="iot-meta-row">
+                <span class="meta-label">Transmission:</span>
+                <span class="meta-val" id="sensor-last-seen">Checking...</span>
+            </div>
+            <div class="iot-meta-row">
+                <span class="meta-label">Cadence:</span>
+                <span class="meta-val">15s Live Interval</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clinical Environmental Correlation Context Callout -->
+    <div class="iot-clinical-notice">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0; margin-top:2px;">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <div class="iot-clinical-text">
+            <strong>Clinical Environmental Context:</strong> Ambient temperature and relative humidity directly influence trans-epidermal water loss (TEWL) and pruritus severity in dermatoses such as Atopic Dermatitis, Xerosis, and Eczematous lesions. <em>Note: Environmental readings serve solely as clinical examination context and do not alter AI classification predictions.</em>
+        </div>
+    </div>
+</section>
+
 <!-- Recent Activity Registry -->
 {% if recent_history %}
 <section class="card fade-in" id="dashboard-recent-section" style="margin-top: var(--sp-6);">

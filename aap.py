@@ -11,11 +11,14 @@ import io
 import json
 import os
 import uuid
+import hmac
+import math
 from datetime import datetime, timezone
 
 from flask import (
     Flask,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -29,6 +32,7 @@ import config
 import db
 import model_service
 import clinical_protocols
+import sensor_db
 
 # ── Flask app ────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -325,6 +329,261 @@ def uploaded_file(filename):
     """Serve an uploaded image safely."""
     safe = secure_filename(filename)
     return send_from_directory(config.UPLOAD_FOLDER, safe)
+
+
+# ── IoT Environmental Sensor Endpoints (Raspberry Pi 3 + DHT11) ───────────
+
+@app.route("/api/sensor", methods=["POST"])
+def post_sensor_reading():
+    """
+    Accept authenticated environmental sensor readings from Raspberry Pi 3.
+    Persists data to Supabase PostgreSQL with server-generated UTC timestamp.
+    """
+    # 1. Verify server configuration
+    if not config.SENSOR_API_TOKEN:
+        return jsonify({
+            "status": "error",
+            "message": "Server configuration missing: SENSOR_API_TOKEN is not set.",
+        }), 503
+
+    # 2. Authenticate request using constant-time comparison
+    auth_header = request.headers.get("X-API-Token", "")
+    if not auth_header or not hmac.compare_digest(auth_header.encode("utf-8"), config.SENSOR_API_TOKEN.encode("utf-8")):
+        return jsonify({
+            "status": "error",
+            "message": "Unauthorized: Invalid or missing X-API-Token header.",
+        }), 401
+
+    # 3. Payload size and type enforcement
+    if request.content_length and request.content_length > 16384:
+        return jsonify({
+            "status": "error",
+            "message": "Payload too large (maximum 16 KB).",
+        }), 400
+
+    if not request.is_json:
+        return jsonify({
+            "status": "error",
+            "message": "Content-Type must be application/json.",
+        }), 400
+
+    data = request.get_json(silent=True)
+    if data is None or not isinstance(data, dict):
+        return jsonify({
+            "status": "error",
+            "message": "Malformed JSON payload.",
+        }), 400
+
+    # 4. Required fields check
+    for field in ("device_id", "temperature", "humidity"):
+        if field not in data:
+            return jsonify({
+                "status": "error",
+                "message": f"Missing required field: '{field}'.",
+            }), 400
+
+    device_id = data["device_id"]
+    temp = data["temperature"]
+    hum = data["humidity"]
+
+    # 5. Validate device_id
+    if not isinstance(device_id, str) or not device_id.strip():
+        return jsonify({
+            "status": "error",
+            "message": "Field 'device_id' must be a non-empty string.",
+        }), 400
+
+    if config.EXPECTED_DEVICE_ID and device_id.strip() != config.EXPECTED_DEVICE_ID:
+        return jsonify({
+            "status": "error",
+            "message": f"Unauthorized device: expected '{config.EXPECTED_DEVICE_ID}', received '{device_id}'.",
+        }), 400
+
+    # 6. Validate temperature & humidity numeric types (strictly rejecting booleans, NaN, Inf)
+    if isinstance(temp, bool) or not isinstance(temp, (int, float)):
+        return jsonify({
+            "status": "error",
+            "message": "Field 'temperature' must be a numeric value.",
+        }), 400
+
+    if isinstance(hum, bool) or not isinstance(hum, (int, float)):
+        return jsonify({
+            "status": "error",
+            "message": "Field 'humidity' must be a numeric value.",
+        }), 400
+
+    if math.isnan(temp) or math.isinf(temp) or math.isnan(hum) or math.isinf(hum):
+        return jsonify({
+            "status": "error",
+            "message": "Sensor readings must be finite numeric values (no NaN or Infinity).",
+        }), 400
+
+    # 7. Physical range validation
+    # Ambient human/clinical environment: -40°C to 80°C
+    if not (-40.0 <= temp <= 80.0):
+        return jsonify({
+            "status": "error",
+            "message": f"Temperature value {temp}°C is out of physically reasonable range (-40°C to 80°C).",
+        }), 400
+
+    # Relative humidity: 0% to 100%
+    if not (0.0 <= hum <= 100.0):
+        return jsonify({
+            "status": "error",
+            "message": f"Humidity value {hum}% is out of valid range (0% to 100%).",
+        }), 400
+
+    # 8. Check persistent database configuration
+    if not sensor_db.is_configured():
+        return jsonify({
+            "status": "error",
+            "message": "Server database unconfigured: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.",
+        }), 503
+
+    # 9. Server-generated UTC timestamp
+    recorded_at = datetime.now(timezone.utc).isoformat()
+
+    # 10. Persist to Supabase PostgreSQL
+    try:
+        record = sensor_db.insert_reading(
+            device_id=device_id.strip(),
+            temperature=float(temp),
+            humidity=float(hum),
+            recorded_at=recorded_at,
+        )
+    except Exception as exc:
+        return jsonify({
+            "status": "error",
+            "message": "Failed to persist sensor reading to database.",
+        }), 502
+
+    return jsonify({
+        "status": "success",
+        "message": "Sensor reading recorded successfully.",
+        "data": {
+            "device_id": device_id.strip(),
+            "temperature": round(float(temp), 2),
+            "humidity": round(float(hum), 2),
+            "recorded_at": recorded_at,
+        },
+    }), 201
+
+
+@app.route("/api/sensor/latest", methods=["GET"])
+def get_sensor_latest():
+    """
+    Return the latest stored environmental sensor telemetry.
+    Computes freshness status (online, stale, offline, waiting_for_sensor).
+    Safe for public dashboard polling (exposes no secrets).
+    """
+    if not sensor_db.is_configured():
+        return jsonify({
+            "status": "unconfigured",
+            "device_id": config.EXPECTED_DEVICE_ID,
+            "temperature": None,
+            "humidity": None,
+            "recorded_at": None,
+            "age_seconds": None,
+            "is_stale": True,
+            "message": "Supabase environmental database credentials are not configured.",
+        }), 200
+
+    reading = sensor_db.get_latest_reading(config.EXPECTED_DEVICE_ID)
+
+    if not reading:
+        return jsonify({
+            "status": "waiting_for_sensor",
+            "device_id": config.EXPECTED_DEVICE_ID,
+            "temperature": None,
+            "humidity": None,
+            "recorded_at": None,
+            "age_seconds": None,
+            "is_stale": True,
+            "message": "Waiting for sensor telemetry from Raspberry Pi 3...",
+        }), 200
+
+    # Calculate data freshness
+    age_seconds = None
+    is_stale = True
+    status = "offline"
+    rec_time_str = reading.get("recorded_at")
+
+    if rec_time_str:
+        try:
+            # Handle ISO timestamps with Z or timezone offset
+            ts_clean = rec_time_str.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(ts_clean)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            age_seconds = max(0, int((datetime.now(timezone.utc) - dt).total_seconds()))
+
+            if age_seconds <= config.SENSOR_STALE_SECONDS:
+                status = "online"
+                is_stale = False
+                msg = "Sensor online and actively transmitting."
+            elif age_seconds <= 300:
+                status = "stale"
+                is_stale = True
+                msg = f"Sensor telemetry is stale (last received {age_seconds}s ago)."
+            else:
+                status = "offline"
+                is_stale = True
+                msg = f"Raspberry Pi appears offline (last seen {age_seconds}s ago)."
+        except Exception:
+            status = "stale"
+            is_stale = True
+            msg = "Could not parse sensor timestamp."
+    else:
+        msg = "Sensor record has no timestamp."
+
+    return jsonify({
+        "status": status,
+        "device_id": reading.get("device_id", config.EXPECTED_DEVICE_ID),
+        "temperature": reading.get("temperature"),
+        "humidity": reading.get("humidity"),
+        "recorded_at": rec_time_str,
+        "age_seconds": age_seconds,
+        "is_stale": is_stale,
+        "message": msg,
+    }), 200
+
+
+@app.route("/api/sensor/history", methods=["GET"])
+def get_sensor_history():
+    """
+    Return recent environmental history (last 24 hours, capped at limit).
+    """
+    if not sensor_db.is_configured():
+        return jsonify({
+            "status": "unconfigured",
+            "count": 0,
+            "readings": [],
+            "message": "Supabase environmental database credentials are not configured.",
+        }), 200
+
+    hours = request.args.get("hours", default=24, type=int)
+    limit = request.args.get("limit", default=100, type=int)
+
+    records = sensor_db.get_history(
+        device_id=config.EXPECTED_DEVICE_ID,
+        hours=min(max(1, hours), 72),
+        limit=min(max(1, limit), config.SENSOR_HISTORY_LIMIT),
+    )
+
+    clean_records = []
+    for r in records:
+        clean_records.append({
+            "temperature": r.get("temperature"),
+            "humidity": r.get("humidity"),
+            "recorded_at": r.get("recorded_at"),
+        })
+
+    return jsonify({
+        "status": "success",
+        "device_id": config.EXPECTED_DEVICE_ID,
+        "count": len(clean_records),
+        "readings": clean_records,
+    }), 200
 
 
 # ── Error handlers ───────────────────────────────────────────────────────

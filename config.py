@@ -42,3 +42,12 @@ DATABASE_PATH = os.environ.get(
     "DATABASE_PATH",
     os.path.join(INSTANCE_DIR, "history.db"),
 )
+
+# IoT Environmental Sensor Settings (Raspberry Pi 3 + DHT11 & Supabase PostgreSQL)
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SENSOR_API_TOKEN = os.environ.get("SENSOR_API_TOKEN", "").strip()
+EXPECTED_DEVICE_ID = os.environ.get("EXPECTED_DEVICE_ID", "skin-monitor-pi").strip()
+SENSOR_STALE_SECONDS = int(os.environ.get("SENSOR_STALE_SECONDS", 60))
+SENSOR_HISTORY_LIMIT = int(os.environ.get("SENSOR_HISTORY_LIMIT", 100))
+

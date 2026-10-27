@@ -1,0 +1,4 @@
+# Python packages for Raspberry Pi 3 DHT11 Sender
+adafruit-circuitpython-dht>=4.0.0
+RPi.GPIO>=0.7.1
+python-dotenv>=1.0.0

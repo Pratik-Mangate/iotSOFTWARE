@@ -2056,7 +2056,8 @@ a:hover {
     .btn-group,
     .nav-toggle,
     .hero-actions,
-    .flash-container {
+    .flash-container,
+    .iot-telemetry-card {
         display: none !important;
     }
 
@@ -2081,3 +2082,268 @@ a:hover {
         break-inside: avoid;
     }
 }
+
+/* ── Live IoT Environmental Telemetry Styles (Raspberry Pi 3 + DHT11) ─────── */
+.iot-telemetry-card {
+    border: 1px solid var(--clr-border);
+    background-color: var(--clr-surface);
+    position: relative;
+    overflow: hidden;
+}
+
+.iot-toolbar {
+    margin-bottom: var(--sp-4);
+    padding-bottom: var(--sp-3);
+    border-bottom: 1px solid var(--clr-border-subtle);
+}
+
+.iot-icon-wrapper {
+    background: linear-gradient(135deg, #eff6ff, #dbeafe);
+    color: var(--clr-accent);
+    border: 1px solid var(--clr-accent-border);
+}
+
+.iot-source-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: var(--radius-full);
+    background-color: var(--clr-surface-muted);
+    color: var(--clr-text-secondary);
+    border: 1px solid var(--clr-border);
+}
+
+.sensor-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    transition: all 0.2s ease;
+}
+
+.sensor-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
+/* Sensor Status Variants */
+.sensor-status-badge.status-online {
+    background-color: var(--clr-success-bg);
+    color: var(--clr-success-text);
+    border: 1px solid var(--clr-success-border);
+}
+.sensor-status-badge.status-online .sensor-dot {
+    background-color: var(--clr-success);
+    box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    animation: sensorPulse 2s infinite ease-in-out;
+}
+
+.sensor-status-badge.status-waiting {
+    background-color: var(--clr-info-bg);
+    color: var(--clr-info-text);
+    border: 1px solid var(--clr-info-border);
+}
+.sensor-status-badge.status-waiting .sensor-dot {
+    background-color: var(--clr-info);
+    animation: sensorPulse 1.5s infinite ease-in-out;
+}
+
+.sensor-status-badge.status-stale {
+    background-color: var(--clr-warning-bg);
+    color: var(--clr-warning-text);
+    border: 1px solid var(--clr-warning-border);
+}
+.sensor-status-badge.status-stale .sensor-dot {
+    background-color: var(--clr-warning);
+}
+
+.sensor-status-badge.status-offline {
+    background-color: var(--clr-error-bg);
+    color: var(--clr-error-text);
+    border: 1px solid var(--clr-error-border);
+}
+.sensor-status-badge.status-offline .sensor-dot {
+    background-color: var(--clr-error);
+}
+
+.sensor-status-badge.status-loading,
+.sensor-status-badge.status-unconfigured {
+    background-color: var(--clr-surface-muted);
+    color: var(--clr-text-muted);
+    border: 1px solid var(--clr-border);
+}
+.sensor-status-badge.status-loading .sensor-dot,
+.sensor-status-badge.status-unconfigured .sensor-dot {
+    background-color: var(--clr-text-disabled);
+}
+
+@keyframes sensorPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.65; }
+}
+
+.iot-refresh-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    font-size: var(--fs-xs);
+}
+
+.iot-refresh-btn.refreshing .refresh-icon {
+    animation: spin 0.7s linear infinite;
+}
+
+/* Metrics Grid */
+.iot-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-4);
+    margin-top: var(--sp-2);
+}
+
+.iot-metric-box {
+    background-color: var(--clr-surface-subtle);
+    border: 1px solid var(--clr-border);
+    border-radius: var(--radius-md);
+    padding: var(--sp-4);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all var(--transition-fast);
+}
+
+.iot-metric-box:hover {
+    border-color: var(--clr-accent-border);
+    box-shadow: var(--shadow-sm);
+}
+
+.iot-metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-2);
+}
+
+.iot-metric-title {
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--clr-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.iot-metric-icon {
+    color: var(--clr-accent);
+    display: flex;
+    align-items: center;
+    opacity: 0.85;
+}
+
+.iot-metric-val-row {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    margin: var(--sp-1) 0;
+}
+
+.iot-metric-val {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: var(--clr-text-primary);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.iot-metric-unit {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--clr-text-muted);
+}
+
+.iot-metric-sub {
+    font-size: var(--fs-xs);
+    color: var(--clr-text-secondary);
+    margin-top: var(--sp-2);
+    min-height: 1.25em;
+}
+
+/* Meta Box */
+.iot-meta-box {
+    background: linear-gradient(145deg, #ffffff, var(--clr-surface-subtle));
+}
+
+.iot-meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: var(--fs-xs);
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--clr-border-subtle);
+}
+
+.iot-meta-row:last-child {
+    border-bottom: none;
+}
+
+.meta-label {
+    color: var(--clr-text-muted);
+}
+
+.meta-val {
+    font-weight: 600;
+    color: var(--clr-text-primary);
+    font-family: monospace;
+}
+
+/* Clinical Context Banner */
+.iot-clinical-notice {
+    margin-top: var(--sp-4);
+    background-color: #f0f7ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    padding: var(--sp-3) var(--sp-4);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    color: #1e3a8a;
+    font-size: var(--fs-xs);
+    line-height: 1.5;
+}
+
+.iot-clinical-notice svg {
+    color: #2563eb;
+}
+
+.iot-clinical-text em {
+    display: block;
+    margin-top: 3px;
+    color: #475569;
+    font-style: normal;
+    font-size: 11px;
+}
+
+/* Mobile Media Query for IoT Telemetry */
+@media (max-width: 768px) {
+    .iot-metrics-grid {
+        grid-template-columns: 1fr;
+        gap: var(--sp-3);
+    }
+
+    .iot-toolbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--sp-3);
+    }
+}
+
