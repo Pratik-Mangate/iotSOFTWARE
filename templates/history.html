@@ -89,6 +89,33 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Mobile Card List View (Visible on mobile screens <= 768px) -->
+        <div class="history-cards-view" id="history-cards-view">
+            {% for r in records %}
+            <a href="{{ url_for('view_result', record_id=r.id) }}" class="history-card-row">
+                <img class="case-thumb"
+                     src="{{ r.image_data or (url_for('uploaded_file', filename=r.image_file) if r.image_file else '') }}"
+                     alt="Case #{{ r.id }}"
+                     loading="lazy"
+                     onerror="this.style.opacity='0.4';">
+                <div class="history-card-info">
+                    <div class="history-card-top-row">
+                        <span class="pred">{{ r.predicted }}</span>
+                        <span class="condition-pill pill-sm">
+                            {{ (r.confidence * 100) | round(1) if r.confidence else 'N/A' }}%
+                        </span>
+                    </div>
+                    <div class="ts">
+                        <span class="case-tag">Case #{{ r.id }}</span> &bull; <span>{{ r.timestamp }}</span>
+                    </div>
+                </div>
+                <div class="history-card-action">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
     </div>
 
     <!-- Empty State -->

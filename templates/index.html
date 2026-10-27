@@ -93,7 +93,7 @@
 
 <!-- Recent Activity Registry -->
 {% if recent_history %}
-<section class="card fade-in" style="margin-top: var(--sp-6);">
+<section class="card fade-in" id="dashboard-recent-section" style="margin-top: var(--sp-6);">
     <div class="table-toolbar">
         <div>
             <h2>Recent Clinical Assessments</h2>
@@ -102,7 +102,7 @@
         <a href="{{ url_for('history') }}" class="btn btn-outline btn-sm">View Full History</a>
     </div>
 
-    <div class="history-cards" style="margin-top: var(--sp-4);">
+    <div class="history-cards" id="dashboard-recent-cards" style="margin-top: var(--sp-4);">
         {% for r in recent_history %}
         <a href="{{ url_for('view_result', record_id=r.id) }}" class="history-card-item" style="text-decoration:none; color:inherit; display:flex;">
             <img src="{{ r.image_data or (url_for('uploaded_file', filename=r.image_file) if r.image_file else '') }}" alt="Analysis sample #{{ r.id }}" loading="lazy" onerror="this.style.opacity='0.4';">
@@ -123,7 +123,7 @@
 {% else %}
 
 <!-- Empty State Guide when no evaluations are recorded yet -->
-<section class="card fade-in" style="margin-top: var(--sp-6); text-align:center; padding: var(--sp-12) var(--sp-6);">
+<section class="card fade-in" id="dashboard-empty-guide" style="margin-top: var(--sp-6); text-align:center; padding: var(--sp-12) var(--sp-6);">
     <div style="width:48px; height:48px; border-radius:var(--radius-md); background-color:var(--clr-surface-muted); color:var(--clr-accent); display:flex; align-items:center; justify-content:center; margin:0 auto var(--sp-4); border:1px solid var(--clr-border);">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     </div>

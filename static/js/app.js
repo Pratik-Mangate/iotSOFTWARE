@@ -497,6 +497,33 @@ function hydrateHistoryPage() {
             `;
         }).join("");
     }
+
+    // Rebuild mobile card list view (Visible on mobile <= 768px)
+    const cardsView = document.getElementById("history-cards-view");
+    if (cardsView) {
+        cardsView.innerHTML = stored.map(r => {
+            const pct = r.confidence ? `${(r.confidence * 100).toFixed(1)}%` : "N/A";
+            const imgSrc = r.image_data || (r.image_file ? `/uploads/${encodeURIComponent(r.image_file)}` : "");
+            return `
+                <a href="/result/${encodeURIComponent(String(r.id))}" class="history-card-row">
+                    <img class="case-thumb" src="${imgSrc}" alt="Case #${escapeHtml(String(r.id))}" loading="lazy"
+                         onerror="this.style.opacity='0.4';">
+                    <div class="history-card-info">
+                        <div class="history-card-top-row">
+                            <span class="pred">${escapeHtml(r.predicted)}</span>
+                            <span class="condition-pill pill-sm">${pct}</span>
+                        </div>
+                        <div class="ts">
+                            <span class="case-tag">Case #${escapeHtml(String(r.id))}</span> &bull; <span>${escapeHtml(r.timestamp || "")}</span>
+                        </div>
+                    </div>
+                    <div class="history-card-action">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </a>
+            `;
+        }).join("");
+    }
 }
 
 /* Restore diagnostic report dynamically when container rotates on Vercel */
@@ -876,17 +903,65 @@ function initProtocolTabs() {
     });
 }
 
-/* Hydrate Dashboard summary counters from client registry */
+/* Hydrate Dashboard summary counters and recent assessment cards from client registry */
 function hydrateDashboard() {
     const stored = getStoredRegistry();
     if (!stored || stored.length === 0) return;
 
+    // Update total cases metric counter
     const caseValueEl = document.querySelector(".card.stat-card:nth-child(2) .stat-value");
     if (caseValueEl) {
         const curVal = parseInt(caseValueEl.textContent.trim(), 10) || 0;
         if (stored.length > curVal) {
             caseValueEl.textContent = stored.length;
         }
+    }
+
+    // Hydrate Recent Clinical Assessments list on Dashboard
+    const recentCards = document.getElementById("dashboard-recent-cards");
+    const emptyGuide = document.getElementById("dashboard-empty-guide");
+    const recentSection = document.getElementById("dashboard-recent-section");
+
+    if (emptyGuide && !recentSection && stored.length > 0) {
+        emptyGuide.style.display = "none";
+        const newSection = document.createElement("section");
+        newSection.className = "card fade-in";
+        newSection.id = "dashboard-recent-section";
+        newSection.style.marginTop = "var(--sp-6)";
+        newSection.innerHTML = `
+            <div class="table-toolbar">
+                <div>
+                    <h2>Recent Clinical Assessments</h2>
+                    <p style="font-size: var(--fs-xs); color: var(--clr-text-muted);">Latest image classifications logged in the local database</p>
+                </div>
+                <a href="/history" class="btn btn-outline btn-sm">View Full History</a>
+            </div>
+            <div class="history-cards" id="dashboard-recent-cards" style="margin-top: var(--sp-4);"></div>
+        `;
+        emptyGuide.parentNode.insertBefore(newSection, emptyGuide);
+    }
+
+    const cardsContainer = document.getElementById("dashboard-recent-cards");
+    if (cardsContainer && stored.length > 0) {
+        const top5 = stored.slice(0, 5);
+        cardsContainer.innerHTML = top5.map(r => {
+            const pct = r.confidence ? `${(r.confidence * 100).toFixed(1)}%` : "N/A";
+            const imgSrc = r.image_data || (r.image_file ? `/uploads/${encodeURIComponent(r.image_file)}` : "");
+            return `
+                <a href="/result/${encodeURIComponent(String(r.id))}" class="history-card-item" style="text-decoration:none; color:inherit; display:flex;">
+                    <img src="${imgSrc}" alt="Analysis sample #${escapeHtml(String(r.id))}" loading="lazy" onerror="this.style.opacity='0.4';">
+                    <div class="history-card-info">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <span class="pred">${escapeHtml(r.predicted)}</span>
+                            <span class="condition-pill pill-sm">${pct}</span>
+                        </div>
+                        <div class="ts">
+                            <span class="case-tag">Case #${escapeHtml(String(r.id))}</span> &bull; <span>${escapeHtml(r.timestamp || "")}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        }).join("");
     }
 }
 
