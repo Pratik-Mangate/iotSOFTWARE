@@ -1314,6 +1314,10 @@ a:hover {
     animation: fadeIn 0.3s ease;
 }
 
+.spin {
+    animation: spin 0.8s linear infinite;
+}
+
 /* ── Mobile Responsive ────────────────────────────────────────── */
 @media (max-width: 900px) {
     .dashboard-grid {

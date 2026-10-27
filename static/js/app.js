@@ -33,6 +33,161 @@ function initNavToggle() {
 }
 
 
+/* ── Client-side image compression & optimization ───────────────── */
+let currentOptimizedFile = null;
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function compressImage(file, maxDimension = 1600, quality = 0.82) {
+    return new Promise((resolve) => {
+        // If not a standard web image, resolve as-is
+        if (!file.type.startsWith("image/") && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+            resolve(file);
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onerror = () => resolve(file);
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onerror = () => resolve(file);
+            img.onload = () => {
+                let { width, height } = img;
+
+                // If already within reasonable dimensions and under 2 MB, return as-is
+                if (width <= maxDimension && height <= maxDimension && file.size <= 2 * 1024 * 1024) {
+                    resolve(file);
+                    return;
+                }
+
+                // Downscale preserving aspect ratio
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = Math.round((height * maxDimension) / width);
+                        width = maxDimension;
+                    } else {
+                        width = Math.round((width * maxDimension) / height);
+                        height = maxDimension;
+                    }
+                }
+
+                const canvas = document.createElement("canvas");
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext("2d");
+                if (!ctx) {
+                    resolve(file);
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob(
+                    (blob) => {
+                        if (!blob) {
+                            resolve(file);
+                            return;
+                        }
+                        const cleanName = (file.name || "skin_photo.jpg").replace(/\.[^/.]+$/, "") + ".jpg";
+                        const compressedFile = new File([blob], cleanName, {
+                            type: "image/jpeg",
+                            lastModified: Date.now(),
+                        });
+                        resolve(compressedFile);
+                    },
+                    "image/jpeg",
+                    quality
+                );
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+/* ── Process selected image with optimization & preview ─────────── */
+async function processSelectedFile(file) {
+    const container   = document.getElementById("preview-container");
+    const imgEl       = document.getElementById("preview-image");
+    const nameEl      = document.getElementById("preview-filename");
+    const statusEl    = container ? container.querySelector(".preview-status") : null;
+    const analyzeBtn  = document.getElementById("analyze-btn");
+    const fileInput   = document.getElementById("skin-image-input");
+    const cameraInput = document.getElementById("camera-input");
+
+    if (!container || !imgEl) return;
+
+    // Validate on client side
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+    if (file.type && !allowed.includes(file.type.toLowerCase()) && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+        alert("Please select a JPG, PNG, or WebP image.");
+        return;
+    }
+
+    // Show instant preview using Object URL
+    const previewUrl = URL.createObjectURL(file);
+    imgEl.src = previewUrl;
+    if (nameEl) nameEl.textContent = file.name;
+    if (statusEl) {
+        statusEl.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="spin">
+                <circle cx="12" cy="12" r="10" stroke-opacity="0.25"/>
+                <path d="M12 2a10 10 0 0 1 10 10"/>
+            </svg>
+            Optimizing image for fast analysis (${formatBytes(file.size)})...
+        `;
+    }
+    container.classList.add("visible");
+    if (analyzeBtn) analyzeBtn.disabled = true;
+
+    try {
+        // Automatically optimize/compress the image (especially high-res phone camera shots)
+        const optimized = await compressImage(file, 1600, 0.82);
+        currentOptimizedFile = optimized;
+
+        // Sync into file input so native form submission carries the optimized payload
+        if (fileInput) {
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(optimized);
+                fileInput.files = dt.files;
+                if (cameraInput) cameraInput.value = "";
+            } catch (dtErr) {
+                console.warn("DataTransfer sync fallback active:", dtErr);
+            }
+        }
+
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Ready for AI analysis (${formatBytes(optimized.size)})
+            `;
+        }
+    } catch (err) {
+        console.error("Image compression error:", err);
+        currentOptimizedFile = file;
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Ready for AI analysis (${formatBytes(file.size)})
+            `;
+        }
+    } finally {
+        if (analyzeBtn) analyzeBtn.disabled = false;
+    }
+}
+
+function showPreview(file) {
+    processSelectedFile(file);
+}
+
 /* ── Drag-and-drop upload zone ─────────────────────────────────── */
 function initDropZone() {
     const dropZone  = document.getElementById("drop-zone");
@@ -64,8 +219,7 @@ function initDropZone() {
     dropZone.addEventListener("drop", (e) => {
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            fileInput.files = files;
-            showPreview(files[0]);
+            processSelectedFile(files[0]);
         }
     });
 
@@ -73,8 +227,8 @@ function initDropZone() {
     fileInput.addEventListener("change", () => {
         if (fileInput.files.length > 0) {
             const cam = document.getElementById("camera-input");
-            if (cam) cam.value = ""; // clear other input
-            showPreview(fileInput.files[0]);
+            if (cam) cam.value = "";
+            processSelectedFile(fileInput.files[0]);
         }
     });
 
@@ -83,78 +237,99 @@ function initDropZone() {
     if (cameraInput) {
         cameraInput.addEventListener("change", () => {
             if (cameraInput.files.length > 0) {
-                fileInput.value = ""; // clear gallery input so camera is used
-                // Try sync if supported, otherwise camera_image name attribute handles it
-                try {
-                    const dt = new DataTransfer();
-                    dt.items.add(cameraInput.files[0]);
-                    fileInput.files = dt.files;
-                } catch (e) {
-                    // Fallback: camera_image input itself will be submitted
-                }
-                showPreview(cameraInput.files[0]);
+                processSelectedFile(cameraInput.files[0]);
             }
         });
     }
 }
 
-
-/* ── Image preview ─────────────────────────────────────────────── */
-function showPreview(file) {
-    const container  = document.getElementById("preview-container");
-    const imgEl      = document.getElementById("preview-image");
-    const nameEl     = document.getElementById("preview-filename");
-    const analyzeBtn = document.getElementById("analyze-btn");
-
-    if (!container || !imgEl) return;
-
-    // Validate on client side
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(file.type)) {
-        alert("Please select a JPG, PNG, or WebP image.");
-        return;
-    }
-
-    const maxMB = 10;
-    if (file.size > maxMB * 1024 * 1024) {
-        alert(`Image is too large. Maximum size is ${maxMB} MB.`);
-        return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        imgEl.src = e.target.result;
-        if (nameEl) nameEl.textContent = file.name;
-        container.classList.add("visible");
-        if (analyzeBtn) analyzeBtn.disabled = false;
-    };
-    reader.readAsDataURL(file);
-}
-
-
-/* ── Form submission with loader ───────────────────────────────── */
+/* ── Form submission with loader & payload safeguard ────────────── */
 function initAnalyzeForm() {
     const form    = document.getElementById("analyze-form");
     const loader  = document.getElementById("loader-overlay");
     if (!form) return;
 
-    form.addEventListener("submit", (e) => {
-        const fileInput = document.getElementById("skin-image-input");
+    form.addEventListener("submit", async (e) => {
+        const fileInput   = document.getElementById("skin-image-input");
         const cameraInput = document.getElementById("camera-input");
-        const hasFile = (fileInput && fileInput.files && fileInput.files.length > 0) ||
-                        (cameraInput && cameraInput.files && cameraInput.files.length > 0);
 
-        if (!hasFile) {
+        let file = currentOptimizedFile;
+        if (!file) {
+            file = (fileInput && fileInput.files && fileInput.files[0]) ||
+                   (cameraInput && cameraInput.files && cameraInput.files[0]);
+        }
+
+        if (!file) {
             e.preventDefault();
             alert("Please select or capture an image first.");
             return;
         }
 
-        // Show loading overlay
-        if (loader) loader.classList.add("active");
+        // Vercel serverless request body ceiling is 4.5 MB.
+        // If file exceeds 3.5 MB, guarantee compression before upload to avoid 413 error
+        if (file.size > 3.5 * 1024 * 1024) {
+            e.preventDefault();
+            if (loader) {
+                const textEl = loader.querySelector(".loader-text");
+                if (textEl) textEl.textContent = "Optimizing high-resolution photo for upload…";
+                loader.classList.add("active");
+            }
+
+            try {
+                const compressed = await compressImage(file, 1400, 0.78);
+                currentOptimizedFile = compressed;
+
+                if (compressed.size > 4.2 * 1024 * 1024) {
+                    alert("This image is too large even after compression. Please choose a photo under 4 MB.");
+                    if (loader) loader.classList.remove("active");
+                    return;
+                }
+
+                try {
+                    const dt = new DataTransfer();
+                    dt.items.add(compressed);
+                    fileInput.files = dt.files;
+                    if (cameraInput) cameraInput.value = "";
+                    if (loader) {
+                        const textEl = loader.querySelector(".loader-text");
+                        if (textEl) textEl.textContent = "Evaluating lesion with EfficientNet-B0…";
+                    }
+                    form.submit();
+                    return;
+                } catch (dtErr) {
+                    // Fallback to fetch + manual page render if DataTransfer is blocked
+                    const formData = new FormData();
+                    formData.append("skin_image", compressed, compressed.name);
+                    const resp = await fetch(form.action || "/predict", {
+                        method: "POST",
+                        body: formData
+                    });
+                    if (resp.redirected) {
+                        window.location.href = resp.url;
+                    } else {
+                        const html = await resp.text();
+                        document.open();
+                        document.write(html);
+                        document.close();
+                    }
+                    return;
+                }
+            } catch (err) {
+                console.error("Compression failed before submit:", err);
+                alert("Could not optimize the image. Please select a smaller photo.");
+                if (loader) loader.classList.remove("active");
+                return;
+            }
+        }
+
+        // Normal payload (< 3.5 MB)
+        if (loader) {
+            const textEl = loader.querySelector(".loader-text");
+            if (textEl) textEl.textContent = "Evaluating lesion with EfficientNet-B0…";
+            loader.classList.add("active");
+        }
     });
 }
-
 
 /* ── History clear confirmation ────────────────────────────────── */
 function confirmClear() {
@@ -163,9 +338,9 @@ function confirmClear() {
     );
 }
 
-
 /* ── Clear preview selection ───────────────────────────────────── */
 function clearPreview() {
+    currentOptimizedFile = null;
     const container   = document.getElementById("preview-container");
     const fileInput   = document.getElementById("skin-image-input");
     const cameraInput = document.getElementById("camera-input");
